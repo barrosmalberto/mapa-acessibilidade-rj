@@ -9,12 +9,19 @@ st.title("🗺️ Mapa Interativo de Acessibilidade - Rio de Janeiro")
 
 @st.cache_data
 def load_data():
-    # O segredo: Se o GeoJSON não estiver na pasta, ele extrai do ZIP!
+    # 1. Extrair o ficheiro ZIP
     if not os.path.exists("hexgrid_with_accessibility.geojson"):
         with zipfile.ZipFile("hexgrid_with_accessibility.zip", 'r') as zip_ref:
             zip_ref.extractall(".")
             
-    return gpd.read_file("hexgrid_with_accessibility.geojson")
+    # 2. Ler os dados
+    gdf = gpd.read_file("hexgrid_with_accessibility.geojson")
+    
+    # 3. O PULO DO GATO: Forçar a conversão para Latitude/Longitude (EPSG:4326)
+    if gdf.crs != "EPSG:4326":
+        gdf = gdf.to_crs(epsg=4326)
+        
+    return gdf
 
 dados = load_data()
 
@@ -39,8 +46,9 @@ visao_inicial = pdk.ViewState(
     bearing=0
 )
 
+# 4. Trocámos o map_style para "dark" (estilo CartoDB que é 100% gratuito e não exige chave)
 st.pydeck_chart(pdk.Deck(
-    map_style="mapbox://styles/mapbox/dark-v10", 
+    map_style="dark", 
     initial_view_state=visao_inicial,
     layers=[camada_hex],
     tooltip={"text": "Empregos acessíveis (30min): {jobs_vinculos_30min_transit_p50}"}
