@@ -62,7 +62,7 @@ dados_json = json.loads(gdf.to_json())
 # ==========================================
 # DASHBOARD: MÉTRICAS E MAPA
 # ==========================================
-st.title("🏙️ Dashboard de Acessibilidade Urbana")
+st.title("🏙️ Mapa Interativo de Acessibilidade - Rio de Janeiro")
 st.subheader(f"Analisando: {indicador.replace('_', ' ').title()}")
 
 m1, m2, m3 = st.columns(3)
