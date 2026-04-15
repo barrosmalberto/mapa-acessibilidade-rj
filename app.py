@@ -22,55 +22,6 @@ def load_data():
 
 gdf = load_data()
 
-
-# ==========================================
-# SECÇÃO DE ESTATÍSTICAS (NOVO)
-# ==========================================
-st.markdown("---")
-st.subheader("📈 Análise Estatística Detalhada")
-
-# Criar duas colunas lado a lado para os gráficos
-col_grafico, col_tabela = st.columns(2)
-
-with col_grafico:
-    st.markdown("**Distribuição da Acessibilidade**")
-    st.caption("Quantos hexágonos possuem X oportunidades?")
-    
-    # Removemos os zeros para não distorcer o gráfico (áreas vazias)
-    dados_validos = gdf[gdf['valor_mapa'] > 0]['valor_mapa']
-    
-    if len(dados_validos) > 0:
-        # Criamos um histograma rápido usando numpy e pandas
-        contagem, divisorias = np.histogram(dados_validos, bins=20)
-        # Formata os nomes das barras para ficarem legíveis
-        rotulos = [f"{int(divisorias[i])} a {int(divisorias[i+1])}" for i in range(len(contagem))]
-        
-        import pandas as pd
-        df_hist = pd.DataFrame({'Frequência (Nº de Áreas)': contagem}, index=rotulos)
-        
-        # O Streamlit desenha o gráfico de barras automaticamente!
-        st.bar_chart(df_hist)
-    else:
-        st.info("Não há dados maiores que zero para este indicador.")
-
-with col_tabela:
-    st.markdown("**Top 10 Áreas com Maior Acesso**")
-    st.caption("Hexágonos com os maiores índices selecionados.")
-    
-    # Ordena os dados do maior para o menor
-    top10 = gdf.nlargest(10, 'valor_mapa')
-    
-    # Tenta encontrar a coluna de ID do hexágono ou nome do bairro (ajuste se o seu tiver outro nome)
-    coluna_nome = 'hex_id' if 'hex_id' in gdf.columns else gdf.columns[0]
-    
-    df_top10 = top10[[coluna_nome, 'valor_mapa']].copy()
-    df_top10.columns = ['ID da Área', 'Total de Oportunidades']
-    df_top10['Total de Oportunidades'] = df_top10['Total de Oportunidades'].astype(int)
-    
-    # Mostra uma tabela interativa bonita
-    st.dataframe(df_top10, use_container_width=True, hide_index=True)
-
-
 # ==========================================
 # BARRA LATERAL (DASHBOARD CONTROLS)
 # ==========================================
@@ -145,3 +96,55 @@ st.pydeck_chart(pdk.Deck(
     layers=[layer],
     tooltip={"text": "Oportunidades: {valor_mapa}"}
 ))
+
+
+
+
+# ==========================================
+# SECÇÃO DE ESTATÍSTICAS (NOVO)
+# ==========================================
+st.markdown("---")
+st.subheader("📈 Análise Estatística Detalhada")
+
+# Criar duas colunas lado a lado para os gráficos
+col_grafico, col_tabela = st.columns(2)
+
+with col_grafico:
+    st.markdown("**Distribuição da Acessibilidade**")
+    st.caption("Quantos hexágonos possuem X oportunidades?")
+    
+    # Removemos os zeros para não distorcer o gráfico (áreas vazias)
+    dados_validos = gdf[gdf['valor_mapa'] > 0]['valor_mapa']
+    
+    if len(dados_validos) > 0:
+        # Criamos um histograma rápido usando numpy e pandas
+        contagem, divisorias = np.histogram(dados_validos, bins=20)
+        # Formata os nomes das barras para ficarem legíveis
+        rotulos = [f"{int(divisorias[i])} a {int(divisorias[i+1])}" for i in range(len(contagem))]
+        
+        import pandas as pd
+        df_hist = pd.DataFrame({'Frequência (Nº de Áreas)': contagem}, index=rotulos)
+        
+        # O Streamlit desenha o gráfico de barras automaticamente!
+        st.bar_chart(df_hist)
+    else:
+        st.info("Não há dados maiores que zero para este indicador.")
+
+with col_tabela:
+    st.markdown("**Top 10 Áreas com Maior Acesso**")
+    st.caption("Hexágonos com os maiores índices selecionados.")
+    
+    # Ordena os dados do maior para o menor
+    top10 = gdf.nlargest(10, 'valor_mapa')
+    
+    # Tenta encontrar a coluna de ID do hexágono ou nome do bairro (ajuste se o seu tiver outro nome)
+    coluna_nome = 'hex_id' if 'hex_id' in gdf.columns else gdf.columns[0]
+    
+    df_top10 = top10[[coluna_nome, 'valor_mapa']].copy()
+    df_top10.columns = ['ID da Área', 'Total de Oportunidades']
+    df_top10['Total de Oportunidades'] = df_top10['Total de Oportunidades'].astype(int)
+    
+    # Mostra uma tabela interativa bonita
+    st.dataframe(df_top10, use_container_width=True, hide_index=True)
+
+
