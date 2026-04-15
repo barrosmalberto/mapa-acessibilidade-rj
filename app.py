@@ -93,7 +93,7 @@ visao_inicial = pdk.ViewState(
     latitude=-22.9068,
     longitude=-43.1729,
     zoom=10,
-    pitch=25, 
+    pitch=40, 
     bearing=0
 )
 
