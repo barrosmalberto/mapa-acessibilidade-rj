@@ -3,38 +3,57 @@ import pydeck as pdk
 import geopandas as gpd
 import zipfile
 import os
+import json # <-- Importante para o novo método à prova de falhas
 
 st.set_page_config(page_title="Acessibilidade RJ", layout="wide")
 st.title("🗺️ Mapa Interativo de Acessibilidade - Rio de Janeiro")
 
 @st.cache_data
 def load_data():
-    # 1. Extrair o ficheiro ZIP
     if not os.path.exists("hexgrid_with_accessibility.geojson"):
         with zipfile.ZipFile("hexgrid_with_accessibility.zip", 'r') as zip_ref:
             zip_ref.extractall(".")
             
-    # 2. Ler os dados
     gdf = gpd.read_file("hexgrid_with_accessibility.geojson")
     
-    # 3. O PULO DO GATO: Forçar a conversão para Latitude/Longitude (EPSG:4326)
     if gdf.crs != "EPSG:4326":
         gdf = gdf.to_crs(epsg=4326)
         
-    return gdf
+    # --- PREPARAÇÃO À PROVA DE FALHAS ---
+    
+    # 1. Garantir que não há valores vazios (NaN) que tornam o mapa invisível
+    coluna_dados = 'jobs_vinculos_30min_transit_p50'
+    if coluna_dados in gdf.columns:
+        gdf['valor_mapa'] = gdf[coluna_dados].fillna(0)
+    else:
+        # Se a coluna não existir com esse nome exato, usa outra genérica para não quebrar
+        gdf['valor_mapa'] = 50 
 
+    # 2. Calcular a altura e a cor no Python (muito mais seguro)
+    gdf['altura'] = gdf['valor_mapa'] * 10
+
+    def calcular_cor(valor):
+        verde = int(min(valor * 2, 255))
+        return [255, verde, 100] # Gera um degrade de vermelho para amarelo
+        
+    gdf['cor'] = gdf['valor_mapa'].apply(calcular_cor)
+
+    # 3. Converter o GeoDataFrame para um dicionário JSON puro (O Pydeck adora este formato)
+    return json.loads(gdf.to_json())
+
+# Carrega os dados processados
 dados = load_data()
 
 camada_hex = pdk.Layer(
     "GeoJsonLayer",
-    dados,
+    data=dados, # Passa o dicionário puro
     opacity=0.8,
     stroked=False, 
     filled=True,
     extruded=True, 
     wireframe=True,
-    get_elevation="properties.jobs_vinculos_30min_transit_p50 * 10",
-    get_fill_color="[255, properties.jobs_vinculos_30min_transit_p50 * 2, 100]",
+    get_elevation="properties.altura", # Agora puxa a altura já calculada
+    get_fill_color="properties.cor",   # Agora puxa a cor já calculada
     pickable=True 
 )
 
@@ -46,10 +65,9 @@ visao_inicial = pdk.ViewState(
     bearing=0
 )
 
-# 4. Trocámos o map_style para "dark" (estilo CartoDB que é 100% gratuito e não exige chave)
 st.pydeck_chart(pdk.Deck(
     map_style="dark", 
     initial_view_state=visao_inicial,
     layers=[camada_hex],
-    tooltip={"text": "Empregos acessíveis (30min): {jobs_vinculos_30min_transit_p50}"}
+    tooltip={"text": "Indicador de Acessibilidade: {valor_mapa}"}
 ))
