@@ -44,13 +44,15 @@ def get_color_magma(val):
     # Normalizamos o valor de 0 a 1
     frac = val / max_val
     
-    # Paleta Magma Simplificada (Roxo -> Rosa -> Amarelo)
-    if frac < 0.25:
+    # Rustic Charm Pallete
+    if frac = 0:
         return [255, 252, 242]      # Rustic Charm Pallete
+    elif frac < 0.25:
+        return [204, 197, 185]      # Rustic Charm Pallete
     elif frac < 0.5:
-        return [204, 197, 185]    # Rustic Charm Pallete
+        return [64, 61, 57]    # Rustic Charm Pallete
     elif frac < 0.75:
-        return [64, 61, 57]   # Rustic Charm Pallete
+        return [37, 36, 34]   # Rustic Charm Pallete
     else:
         return [235, 94, 40]   # Rustic Charm Pallete
 
