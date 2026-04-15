@@ -61,42 +61,6 @@ gdf['altura'] = (gdf['valor_mapa'] / max_val) * altura_max if max_val > 0 else 0
 
 dados_json = json.loads(gdf.to_json())
 
-# ==========================================
-# DASHBOARD: MÉTRICAS E MAPA
-# ==========================================
-st.title("🏙️ Mapa Interativo de Acessibilidade - Rio de Janeiro")
-st.subheader(f"Analisando: {indicador.replace('_', ' ').title()}")
-
-m1, m2, m3 = st.columns(3)
-m1.metric("Total de Células", f"{len(gdf):,}")
-m2.metric("Valor Máximo", f"{int(max_val):,}")
-m3.metric("Média Geral", f"{int(gdf['valor_mapa'].mean()):,}")
-
-# Camada do Mapa
-layer = pdk.Layer(
-    "GeoJsonLayer",
-    data=dados_json,
-    opacity=0.5,
-    stroked=True,
-    get_line_color=[77,77,77], # Linhas finas brancas entre hexágonos
-    line_width_min_pixels=0.5,
-    filled=True,
-    extruded=True,
-    get_elevation="properties.altura",
-    get_fill_color="properties.cor",
-    pickable=True,
-    auto_highlight=True
-)
-
-view = pdk.ViewState(latitude=-22.9068, longitude=-43.1729, zoom=10, pitch=45)
-
-st.pydeck_chart(pdk.Deck(
-    map_style="mapbox://styles/mapbox/navigation-guidance-night-v4", # Estilo focado em dados
-    initial_view_state=view,
-    layers=[layer],
-    tooltip={"text": "Oportunidades: {valor_mapa}"}
-))
-
 
 
 
@@ -146,5 +110,45 @@ with col_tabela:
     
     # Mostra uma tabela interativa bonita
     st.dataframe(df_top10, use_container_width=True, hide_index=True)
+
+
+
+
+# ==========================================
+# DASHBOARD: MÉTRICAS E MAPA
+# ==========================================
+st.title("🏙️ Mapa Interativo de Acessibilidade - Rio de Janeiro")
+st.subheader(f"Analisando: {indicador.replace('_', ' ').title()}")
+
+m1, m2, m3 = st.columns(3)
+m1.metric("Total de Células", f"{len(gdf):,}")
+m2.metric("Valor Máximo", f"{int(max_val):,}")
+m3.metric("Média Geral", f"{int(gdf['valor_mapa'].mean()):,}")
+
+# Camada do Mapa
+layer = pdk.Layer(
+    "GeoJsonLayer",
+    data=dados_json,
+    opacity=0.5,
+    stroked=True,
+    get_line_color=[77,77,77], # Linhas finas brancas entre hexágonos
+    line_width_min_pixels=0.5,
+    filled=True,
+    extruded=True,
+    get_elevation="properties.altura",
+    get_fill_color="properties.cor",
+    pickable=True,
+    auto_highlight=True
+)
+
+view = pdk.ViewState(latitude=-22.9068, longitude=-43.1729, zoom=10, pitch=45)
+
+st.pydeck_chart(pdk.Deck(
+    map_style="mapbox://styles/mapbox/navigation-guidance-night-v4", # Estilo focado em dados
+    initial_view_state=view,
+    layers=[layer],
+    tooltip={"text": "Oportunidades: {valor_mapa}"}
+))
+
 
 
