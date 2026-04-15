@@ -46,7 +46,7 @@ def get_color_magma(val):
     
     # Rustic Charm Pallete
     if frac == 0:
-        return [255, 252, 242]      # Rustic Charm Pallete
+        return [255, 252, 190]      # Rustic Charm Pallete
     elif frac < 0.25:
         return [204, 197, 185]      # Rustic Charm Pallete
     elif frac < 0.5:
