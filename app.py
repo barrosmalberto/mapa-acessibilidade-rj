@@ -3,10 +3,16 @@ import pydeck as pdk
 import geopandas as gpd
 import zipfile
 import os
-import json # <-- Importante para o novo método à prova de falhas
+import json
 
-st.set_page_config(page_title="Acessibilidade RJ", layout="wide")
-st.title("🗺️ Mapa Interativo de Acessibilidade - Rio de Janeiro")
+# 1. CONFIGURAÇÃO DA PÁGINA (Layout Largo)
+st.set_page_config(page_title="Dashboard de Acessibilidade RJ", layout="wide")
+
+# ==========================================
+# BARRA LATERAL (MENU DO DASHBOARD)
+# ==========================================
+st.sidebar.title("📊 Painel de Controlo")
+st.sidebar.markdown("Explore a acessibilidade do Rio de Janeiro.")
 
 @st.cache_data
 def load_data():
@@ -15,45 +21,71 @@ def load_data():
             zip_ref.extractall(".")
             
     gdf = gpd.read_file("hexgrid_with_accessibility.geojson")
-    
     if gdf.crs != "EPSG:4326":
         gdf = gdf.to_crs(epsg=4326)
-        
-    # --- PREPARAÇÃO À PROVA DE FALHAS ---
-    
-    # 1. Garantir que não há valores vazios (NaN) que tornam o mapa invisível
-    coluna_dados = 'jobs_vinculos_30min_transit_p50'
-    if coluna_dados in gdf.columns:
-        gdf['valor_mapa'] = gdf[coluna_dados].fillna(0)
-    else:
-        # Se a coluna não existir com esse nome exato, usa outra genérica para não quebrar
-        gdf['valor_mapa'] = 50 
+    return gdf
 
-    # 2. Calcular a altura e a cor no Python (muito mais seguro)
-    gdf['altura'] = gdf['valor_mapa'] * 10
+gdf = load_data()
 
-    def calcular_cor(valor):
-        verde = int(min(valor * 2, 255))
-        return [255, verde, 100] # Gera um degrade de vermelho para amarelo
-        
-    gdf['cor'] = gdf['valor_mapa'].apply(calcular_cor)
+# ==========================================
+# LÓGICA DO DASHBOARD E ESCALA PROPORCIONAL
+# ==========================================
 
-    # 3. Converter o GeoDataFrame para um dicionário JSON puro (O Pydeck adora este formato)
-    return json.loads(gdf.to_json())
+# Encontra todas as colunas de resultados (geralmente começam com o nome do indicador)
+colunas_acessibilidade = [col for col in gdf.columns if 'transit' in col or 'walk' in col]
 
-# Carrega os dados processados
-dados = load_data()
+if len(colunas_acessibilidade) > 0:
+    # O utilizador escolhe o que quer ver no mapa!
+    indicador_selecionado = st.sidebar.selectbox("Selecione o Indicador:", colunas_acessibilidade)
+else:
+    indicador_selecionado = 'jobs_vinculos_30min_transit_p50' # fallback caso não encontre
 
+gdf['valor_mapa'] = gdf[indicador_selecionado].fillna(0)
+valor_maximo = gdf['valor_mapa'].max()
+
+# --- A CORREÇÃO DA ALTURA GROTESCA ---
+# Em vez de multiplicar por 10, fazemos uma proporção. 
+# O hexágono com maior valor terá sempre a altura máxima de 3000 metros visuais.
+if valor_maximo > 0:
+    gdf['altura'] = (gdf['valor_mapa'] / valor_maximo) * 3000
+else:
+    gdf['altura'] = 0
+
+# Calcula cores: do Amarelo (baixo) ao Laranja/Vermelho (Alto)
+def calcular_cor(valor):
+    if valor_maximo == 0: return [255, 255, 150]
+    intensidade = int((valor / valor_maximo) * 200)
+    return [255, 255 - intensidade, 50]
+
+gdf['cor'] = gdf['valor_mapa'].apply(calcular_cor)
+dados_json = json.loads(gdf.to_json())
+
+# ==========================================
+# CORPO PRINCIPAL DO DASHBOARD
+# ==========================================
+st.title("🗺️ Mapa Interativo de Acessibilidade - Rio de Janeiro")
+
+# Cartões de Métricas (Métricas Rápidas)
+col1, col2, col3 = st.columns(3)
+col1.metric("Hexágonos Mapeados", f"{len(gdf):,}".replace(",", "."))
+col2.metric("Oportunidades (Máximo)", f"{int(valor_maximo):,}".replace(",", "."))
+col3.metric("Média de Acessos", f"{int(gdf['valor_mapa'].mean()):,}".replace(",", "."))
+
+st.markdown("---") # Linha divisória
+
+# ==========================================
+# MAPA 3D
+# ==========================================
 camada_hex = pdk.Layer(
     "GeoJsonLayer",
-    data=dados, # Passa o dicionário puro
+    data=dados_json,
     opacity=0.8,
     stroked=False, 
     filled=True,
     extruded=True, 
     wireframe=True,
-    get_elevation="properties.altura", # Agora puxa a altura já calculada
-    get_fill_color="properties.cor",   # Agora puxa a cor já calculada
+    get_elevation="properties.altura", 
+    get_fill_color="properties.cor",   
     pickable=True 
 )
 
@@ -69,5 +101,5 @@ st.pydeck_chart(pdk.Deck(
     map_style="dark", 
     initial_view_state=visao_inicial,
     layers=[camada_hex],
-    tooltip={"text": "Indicador de Acessibilidade: {valor_mapa}"}
+    tooltip={"text": f"Oportunidades nesta zona: {{valor_mapa}}"}
 ))
