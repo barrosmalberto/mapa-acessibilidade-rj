@@ -31,7 +31,7 @@ colunas_acessibilidade = [col for col in gdf.columns if 'transit' in col or 'wal
 indicador = st.sidebar.selectbox("Selecione o Indicador:", colunas_acessibilidade)
 
 # Slider para o usuário controlar a altura máxima (evita o efeito "grotesco")
-altura_max = st.sidebar.slider("Exagero Vertical (Altura):", 500, 5000, 2000)
+altura_max = st.sidebar.slider("Visualização vertical:", 500, 5000, 2000)
 
 # ==========================================
 # LÓGICA DE CORES PROFISSIONAL (MAGMA)
@@ -46,13 +46,13 @@ def get_color_magma(val):
     
     # Paleta Magma Simplificada (Roxo -> Rosa -> Amarelo)
     if frac < 0.25:
-        return [40, 20, 80, 160]      # Roxo Escuro
+        return [255, 252, 242]      # Rustic Charm Pallete
     elif frac < 0.5:
-        return [150, 40, 140, 200]    # Rosa/Magenta
+        return [204, 197, 185]    # Rustic Charm Pallete
     elif frac < 0.75:
-        return [250, 100, 100, 230]   # Laranja Vivo
+        return [64, 61, 57]   # Rustic Charm Pallete
     else:
-        return [255, 230, 100, 255]   # Amarelo Brilhante
+        return [235, 94, 40]   # Rustic Charm Pallete
 
 gdf['cor'] = gdf['valor_mapa'].apply(get_color_magma)
 gdf['altura'] = (gdf['valor_mapa'] / max_val) * altura_max if max_val > 0 else 0
