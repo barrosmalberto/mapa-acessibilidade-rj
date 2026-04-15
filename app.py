@@ -47,14 +47,14 @@ valor_maximo = gdf['valor_mapa'].max()
 # Em vez de multiplicar por 10, fazemos uma proporção. 
 # O hexágono com maior valor terá sempre a altura máxima de 3000 metros visuais.
 if valor_maximo > 0:
-    gdf['altura'] = (gdf['valor_mapa'] / valor_maximo) * 3000
+    gdf['altura'] = (gdf['valor_mapa'] / valor_maximo) * 1000
 else:
     gdf['altura'] = 0
 
 # Calcula cores: do Amarelo (baixo) ao Laranja/Vermelho (Alto)
 def calcular_cor(valor):
     if valor_maximo == 0: return [255, 255, 150]
-    intensidade = int((valor / valor_maximo) * 200)
+    intensidade = int((valor / valor_maximo) * 100)
     return [255, 255 - intensidade, 50]
 
 gdf['cor'] = gdf['valor_mapa'].apply(calcular_cor)
@@ -98,7 +98,7 @@ visao_inicial = pdk.ViewState(
 )
 
 st.pydeck_chart(pdk.Deck(
-    map_style="dark", 
+    map_style="satellite", 
     initial_view_state=visao_inicial,
     layers=[camada_hex],
     tooltip={"text": f"Oportunidades nesta zona: {{valor_mapa}}"}
