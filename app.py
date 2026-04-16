@@ -9,7 +9,9 @@ import pandas as pd
 import scipy
 import matplotlib
 
+# ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA
+# ==========================================
 st.set_page_config(page_title="Dashboard Acessibilidade RJ", layout="wide")
 
 @st.cache_data
@@ -25,10 +27,34 @@ def load_data():
     gdf = gpd.read_file(nome_geojson)
     if gdf.crs != "EPSG:4326":
         gdf = gdf.to_crs(epsg=4326)
+
+    # ==========================================
+    # CRUZAMENTO ESPACIAL: ÁREAS PROGRAMÁTICAS
+    # ==========================================
+    nome_arquivo_ap = "areas_saude.geojson" 
+    
+    if os.path.exists(nome_arquivo_ap):
+        ap_gdf = gpd.read_file(nome_arquivo_ap)
+        if ap_gdf.crs != "EPSG:4326":
+            ap_gdf = ap_gdf.to_crs(epsg=4326)
+            
+        gdf_centroides = gdf.copy()
+        gdf_centroides['geometry'] = gdf_centroides.geometry.centroid
+        
+        cruzamento = gpd.sjoin(gdf_centroides, ap_gdf, how='left', predicate='within')
+        
+        coluna_nome_ap = 'COD_AP_SMS' 
+        
+        if coluna_nome_ap in cruzamento.columns:
+            gdf['Area_Programatica'] = cruzamento[coluna_nome_ap]
+        else:
+            gdf['Area_Programatica'] = "AP Desconhecida"
+    else:
+        gdf['Area_Programatica'] = "Base de APs não encontrada"
+
     return gdf
 
 gdf = load_data()
-
 
 # ==========================================
 # FUNÇÃO DE FORMATAÇÃO (TRADUTOR DE VARIÁVEIS)
@@ -51,30 +77,33 @@ def formatar_indicador(nome_tecnico):
     nome = nome.replace('transit', 'via Transp. Público')
     nome = nome.replace('walk', 'a pé')
     
-    # 3. Limpar o Percentil (Ocultar o p50 que é o padrão, ou dar nome aos outros)
-    # nome = nome.replace('_p50', '_p50')
-    # nome = nome.replace('_p5', '_p5')
-    # nome = nome.replace('_p95', '_p95')
+    # 3. Limpar o Percentil
+    nome = nome.replace('_p50', '')
+    nome = nome.replace('_p5', ' (Otimista)')
+    nome = nome.replace('_p95', ' (Pessimista)')
     
     return nome.strip()
 
-
-
-
 # ==========================================
-# 3. BARRA LATERAL (CONTROLOS)
+# BARRA LATERAL (CONTROLOS)
 # ==========================================
-
-st.sidebar.title("Painel de Controle")
+st.sidebar.title("🎮 Painel de Controle")
 
 colunas_acessibilidade = [col for col in gdf.columns if 'transit' in col or 'walk' in col]
 
-# Aqui o "format_func" chama a função que acabamos de criar acima!
 indicador = st.sidebar.selectbox(
     "Selecione o Indicador:", 
     colunas_acessibilidade,
     format_func=formatar_indicador
 )
+
+# --- FILTRO DE ÁREA PROGRAMÁTICA ---
+if 'Area_Programatica' in gdf.columns and gdf['Area_Programatica'].nunique() > 1:
+    lista_aps = ["Rio de Janeiro (Cidade Toda)"] + sorted(list(gdf['Area_Programatica'].dropna().unique()))
+    ap_selecionada = st.sidebar.selectbox("🗺️ Filtrar por Área Programática:", lista_aps)
+    
+    if ap_selecionada != "Rio de Janeiro (Cidade Toda)":
+        gdf = gdf[gdf['Area_Programatica'] == ap_selecionada]
 
 altura_max = st.sidebar.slider("Exagero vertical (Altura):", 500, 5000, 2000)
 
@@ -88,25 +117,35 @@ def get_color_rustic(val):
     if max_val <= 0: return [40, 40, 40, 50]
     frac = val / max_val
     
-    # Limites muito mais "apertados" para destacar as pequenas variações
     if frac == 0:
         return [255, 252, 190, 50]
-    elif frac < 0.05: # Até 5% das oportunidades máximas
+    elif frac < 0.05: 
         return [204, 197, 185, 200]
-    elif frac < 0.20: # Até 20% das oportunidades
+    elif frac < 0.20: 
         return [64, 61, 57, 220]
-    elif frac < 0.50: # Até 50% das oportunidades
+    elif frac < 0.50: 
         return [37, 36, 34, 240]
-    else:             # A elite das oportunidades (os picos do gráfico)
+    else:             
         return [235, 94, 40, 255]
 
 gdf['cor'] = gdf['valor_mapa'].apply(get_color_rustic)
 gdf['altura'] = (gdf['valor_mapa'] / max_val) * altura_max if max_val > 0 else 0
 
+# ==========================================
+# NOVA FUNÇÃO: FRONTEIRA DO MUNICÍPIO/AP
+# ==========================================
+@st.cache_data
+def get_limites(df_to_dissolve):
+    # O dissolve apaga as linhas internas e deixa só o contorno!
+    limite = df_to_dissolve[['geometry']].dissolve()
+    return json.loads(limite.to_json())
+
+# Pega o limite baseado no GDF atual (filtrado ou não)
+dados_limite = get_limites(gdf)
 dados_json = json.loads(gdf.to_json())
 
 # ==========================================
-# CABEÇALHO E MÉTRICAS (ESTATÍSTICAS RÁPIDAS)
+# CABEÇALHO E MÉTRICAS
 # ==========================================
 st.title("🏙️ Dashboard de Acessibilidade Urbana - RJ")
 st.subheader(f"Análise Atual: {formatar_indicador(indicador)}")
@@ -117,14 +156,12 @@ m2.metric("Máximo de Acessos", f"{int(max_val):,}".replace(",", "."))
 m3.metric("Média da Cidade", f"{int(gdf['valor_mapa'].mean()):,}".replace(",", "."))
 
 # ==========================================
-# ORGANIZAÇÃO EM ABAS (O SEGREDO DO LAYOUT)
+# ORGANIZAÇÃO EM ABAS
 # ==========================================
-# dados_limite = get_limite_municipio(gdf)
-
-
 aba_mapa, aba_stats, aba_correlacoes = st.tabs(["🗺️ Mapa Interativo", "📈 Distribuição", "🔗 Correlações e Testes"])
 
 with aba_mapa:
+    # 1. Camada dos Hexágonos Coloridos
     layer = pdk.Layer(
         "GeoJsonLayer",
         data=dados_json,
@@ -140,12 +177,27 @@ with aba_mapa:
         auto_highlight=True
     )
 
-    view = pdk.ViewState(latitude=-22.9068, longitude=-43.1729, zoom=10, pitch=45)
+    # 2. NOVA Camada da Linha de Fronteira
+    layer_limites = pdk.Layer(
+        "GeoJsonLayer",
+        data=dados_limite,
+        stroked=True,
+        filled=False, 
+        get_line_color=[255, 255, 255, 200], # Branco com opacidade para aparecer no mapa dark
+        get_line_width=2,
+        line_width_min_pixels=2,
+    )
 
+    # Foco inicial focado no centro do dataframe atual
+    centro_lat = gdf.geometry.centroid.y.mean()
+    centro_lon = gdf.geometry.centroid.x.mean()
+    view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=45)
+
+    # Desenha o mapa com as DUAS camadas
     st.pydeck_chart(pdk.Deck(
         map_style="dark", 
         initial_view_state=view,
-        layers=[layer],
+        layers=[layer, layer_limites], 
         tooltip={"text": "Oportunidades: {valor_mapa}"}
     ))
 
@@ -167,7 +219,6 @@ with aba_stats:
 
     with col_tab:
         st.markdown("**Top 10 Melhores Localidades**")
-        # Procura por colunas de nome. Se não houver, usa o ID.
         colunas_nome = ['nome_bairro', 'NM_BAIRRO', 'bairro', 'hex_id']
         col_id = next((c for c in colunas_nome if c in gdf.columns), gdf.columns[0])
         
@@ -179,20 +230,15 @@ with aba_correlacoes:
     st.markdown("### 🔗 Matriz de Correlação de Spearman")
     st.caption("Mede a força e a direção da relação monotônica entre os indicadores de acessibilidade. Valores próximos a 1 (Azul) indicam forte correlação positiva.")
     
-    # Isolar apenas as colunas numéricas de acessibilidade para a matriz
     colunas_matriz = [col for col in gdf.columns if 'transit' in col or 'walk' in col]
     
     if len(colunas_matriz) > 1:
-        # Calcular a correlação de Spearman
         df_matriz = gdf[colunas_matriz].corr(method='spearman')
         
-        # Limpar os nomes das colunas e linhas usando a nossa função de formatação
         nomes_limpos = {col: formatar_indicador(col) for col in colunas_matriz}
         df_matriz = df_matriz.rename(columns=nomes_limpos, index=nomes_limpos)
         
-        # Aplicar o estilo de Mapa de Calor (Gradiente de Vermelho para Azul)
         matriz_estilizada = df_matriz.style.background_gradient(cmap='RdBu', vmin=-1, vmax=1).format("{:.2f}")
-        
         st.dataframe(matriz_estilizada, use_container_width=True)
     else:
         st.warning("É necessário ter pelo menos dois indicadores de acessibilidade para calcular correlações.")
