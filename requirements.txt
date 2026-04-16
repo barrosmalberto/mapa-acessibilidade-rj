@@ -2,3 +2,5 @@ streamlit
 pydeck
 geopandas
 pyogrio
+scipy
+matplotlib
