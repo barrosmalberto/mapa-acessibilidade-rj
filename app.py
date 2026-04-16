@@ -86,7 +86,7 @@ def get_color_rustic(val):
     if max_val <= 0: return [40, 40, 40, 50]
     frac = val / max_val
     # Paleta Rustic Charm (RGBA)
-    if frac == 0:     return [255, 252, 190, 140]
+    if frac == 0:     return [255, 252, 190, 20]
     elif frac < 0.25: return [204, 197, 185, 180]
     elif frac < 0.5:  return [64, 61, 57, 200]
     elif frac < 0.75: return [37, 36, 34, 230]
