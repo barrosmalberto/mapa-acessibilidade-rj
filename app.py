@@ -27,10 +27,43 @@ def load_data():
 
 gdf = load_data()
 
+
+# ==========================================
+# FUNÇÃO DE FORMATAÇÃO (TRADUTOR DE VARIÁVEIS)
+# ==========================================
+def formatar_indicador(nome_tecnico):
+    nome = nome_tecnico
+    
+    # 1. Traduzir o Tema (Oportunidades)
+    nome = nome.replace('jobs_vinculos', 'Empregos')
+    nome = nome.replace('schools_creche', 'Creches')
+    nome = nome.replace('schools_pre', 'Pré-escolas')
+    nome = nome.replace('schools_fundamental', 'Ensino Fundamental')
+    nome = nome.replace('saude_primaria', 'Saúde Primária')
+    nome = nome.replace('saude_emergencia', 'Saúde de Emergência')
+    
+    # 2. Traduzir o Tempo e o Modo
+    nome = nome.replace('_15min_', ' em 15 min ')
+    nome = nome.replace('_30min_', ' em 30 min ')
+    nome = nome.replace('_60min_', ' em 60 min ')
+    nome = nome.replace('transit', 'via Transp. Público')
+    nome = nome.replace('walk', 'a Pé')
+    
+    # 3. Limpar o Percentil (Ocultar o p50 que é o padrão, ou dar nome aos outros)
+    # nome = nome.replace('_p50', '')
+    # nome = nome.replace('_p5', ' (Cenário Otimista)')
+    # nome = nome.replace('_p95', ' (Cenário Pessimista)')
+    
+    return nome.strip()
+
+
+
+
+
 # ==========================================
 # BARRA LATERAL (CONTROLOS)
 # ==========================================
-st.sidebar.title("🎮 Painel de Controlo")
+st.sidebar.title("Painel de Controle")
 
 colunas_acessibilidade = [col for col in gdf.columns if 'transit' in col or 'walk' in col]
 indicador = st.sidebar.selectbox("Selecione o Indicador:", colunas_acessibilidade)
