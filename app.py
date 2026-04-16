@@ -6,6 +6,8 @@ import os
 import json
 import numpy as np
 import pandas as pd
+import scipy
+import matplotlib
 
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Dashboard Acessibilidade RJ", layout="wide")
