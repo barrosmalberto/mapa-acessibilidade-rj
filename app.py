@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import scipy
 import matplotlib
+import plotly.express as px
 
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA
@@ -104,16 +105,22 @@ ap_selecionada = "Rio de Janeiro (Cidade Toda)"
 if 'Area_Programatica' in gdf.columns and gdf['Area_Programatica'].nunique() > 1:
     lista_aps = ["Rio de Janeiro (Cidade Toda)"] + sorted(list(gdf['Area_Programatica'].dropna().unique()))
     ap_selecionada = st.sidebar.selectbox("🗺️ Filtrar por Área Programática:", lista_aps)
-    
-    if ap_selecionada != "Rio de Janeiro (Cidade Toda)":
-        gdf = gdf[gdf['Area_Programatica'] == ap_selecionada]
 
 altura_max = st.sidebar.slider("Exagero vertical (Altura):", 500, 5000, 2000)
 
 # ==========================================
-# LÓGICA DE CORES E DADOS
+# LÓGICA DE CORES E DADOS (COM BACKUP DO DATASET)
 # ==========================================
+# Calcula o valor ANTES de aplicar o filtro para o Boxplot
 gdf['valor_mapa'] = gdf[indicador].fillna(0)
+
+# Guarda o mapa completo da cidade
+gdf_completo = gdf.copy()
+
+# Aplica o filtro de AP (se o usuário não quiser a cidade toda)
+if ap_selecionada != "Rio de Janeiro (Cidade Toda)":
+    gdf = gdf[gdf['Area_Programatica'] == ap_selecionada]
+
 max_val = gdf['valor_mapa'].max()
 
 def get_color_rustic(val):
@@ -137,13 +144,11 @@ gdf['altura'] = (gdf['valor_mapa'] / max_val) * altura_max if max_val > 0 else 0
 # ==========================================
 # NOVA FUNÇÃO: FRONTEIRA DO MUNICÍPIO/AP
 # ==========================================
-# 1. O sublinhado em '_gdf_alvo' é o "escudo" que impede o Streamlit de travar!
 @st.cache_data
 def get_limites(_gdf_alvo, nome_da_area):
     limite = _gdf_alvo[['geometry']].dissolve()
     return json.loads(limite.to_json())
 
-# 2. Agora chamamos a função passando os DOIS argumentos corretamente
 dados_limite = get_limites(gdf, ap_selecionada)
 dados_json = json.loads(gdf.to_json())
 
@@ -164,7 +169,6 @@ m3.metric("Média da Cidade", f"{int(gdf['valor_mapa'].mean()):,}".replace(",", 
 aba_mapa, aba_stats, aba_correlacoes = st.tabs(["🗺️ Mapa Interativo", "📈 Distribuição", "🔗 Correlações e Testes"])
 
 with aba_mapa:
-    # 1. Camada dos Hexágonos Coloridos
     layer = pdk.Layer(
         "GeoJsonLayer",
         data=dados_json,
@@ -180,23 +184,20 @@ with aba_mapa:
         auto_highlight=True
     )
 
-    # 2. NOVA Camada da Linha de Fronteira
     layer_limites = pdk.Layer(
         "GeoJsonLayer",
         data=dados_limite,
         stroked=True,
         filled=False, 
-        get_line_color=[255, 255, 255, 200], # Branco com opacidade para aparecer no mapa dark
+        get_line_color=[255, 255, 255, 200], 
         get_line_width=2,
         line_width_min_pixels=2,
     )
 
-    # Foco inicial focado no centro do dataframe atual
     centro_lat = gdf.geometry.centroid.y.mean()
     centro_lon = gdf.geometry.centroid.x.mean()
     view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=45)
 
-    # Desenha o mapa com as DUAS camadas
     st.pydeck_chart(pdk.Deck(
         map_style="dark", 
         initial_view_state=view,
@@ -228,6 +229,29 @@ with aba_stats:
         top10 = gdf.nlargest(10, 'valor_mapa')[[col_id, 'valor_mapa']]
         top10.columns = ['Localidade', 'Qtd Oportunidades']
         st.dataframe(top10, hide_index=True, use_container_width=True)
+
+    # ==========================================
+    # CLUSTERIZAÇÃO POR AP (BOXPLOT COMPARTIVO)
+    # ==========================================
+    st.markdown("---")
+    st.markdown("**Clusterização de Oportunidades por Área Programática**")
+    st.caption("Compare a desigualdade entre as regiões. Os 'pontos' fora das caixas indicam hexágonos excepcionais (ilhas de oportunidades).")
+    
+    df_plot = gdf_completo[gdf_completo['valor_mapa'] > 0]
+    
+    if not df_plot.empty and 'Area_Programatica' in df_plot.columns:
+        fig = px.box(
+            df_plot, 
+            x='Area_Programatica', 
+            y='valor_mapa', 
+            color='Area_Programatica',
+            labels={'Area_Programatica': 'Área Programática', 'valor_mapa': 'Oportunidades'},
+            template="plotly_dark"
+        )
+        fig.update_layout(showlegend=False, margin=dict(t=10, b=10, l=10, r=10))
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Não há dados de Área Programática suficientes para gerar o gráfico comparativo.")
 
 with aba_correlacoes:
     st.markdown("### 🔗 Matriz de Correlação de Spearman")
