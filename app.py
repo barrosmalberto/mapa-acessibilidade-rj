@@ -123,22 +123,24 @@ if ap_selecionada != "Rio de Janeiro (Cidade Toda)":
 
 max_val = gdf['valor_mapa'].max()
 
-def get_color_rustic(val):
+def get_color_sunset(val):
     if max_val <= 0: return [40, 40, 40, 50]
     frac = val / max_val
     
+    # Valores zero ficam quase transparentes para não poluir
     if frac == 0:
-        return [255, 252, 190, 50]
+        return [255, 255, 255, 10] 
     elif frac < 0.05: 
-        return [204, 197, 185, 200]
+        return [158, 1, 66, 200]    # Vermelho Escuro/Vinho
     elif frac < 0.20: 
-        return [64, 61, 57, 220]
+        return [244, 109, 67, 220]  # Laranja
     elif frac < 0.50: 
-        return [37, 36, 34, 240]
+        return [253, 174, 97, 240]  # Pêssego/Amarelo Queimado
     else:             
-        return [235, 94, 40, 255]
+        return [230, 245, 152, 255] # Amarelo Neon Brilhante (Os picos)
 
-gdf['cor'] = gdf['valor_mapa'].apply(get_color_rustic)
+# Não esqueça de atualizar a chamada da função:
+gdf['cor'] = gdf['valor_mapa'].apply(get_color_sunset)
 gdf['altura'] = (gdf['valor_mapa'] / max_val) * altura_max if max_val > 0 else 0
 
 # ==========================================
@@ -189,9 +191,9 @@ with aba_mapa:
         data=dados_limite,
         stroked=True,
         filled=False, 
-        get_line_color=[0, 0, 0, 255], 
-        get_line_width=2,
-        line_width_min_pixels=2,
+        get_line_color=[255, 255, 255, 200], 
+        get_line_width=3,
+        line_width_min_pixels=3,
     )
 
     centro_lat = gdf.geometry.centroid.y.mean()
@@ -199,7 +201,7 @@ with aba_mapa:
     view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=45)
 
     st.pydeck_chart(pdk.Deck(
-        map_style="light", 
+        map_style="dark", 
         initial_view_state=view,
         layers=[layer, layer_limites], 
         tooltip={"text": "Oportunidades: {valor_mapa}"}
