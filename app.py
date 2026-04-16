@@ -137,27 +137,14 @@ gdf['altura'] = (gdf['valor_mapa'] / max_val) * altura_max if max_val > 0 else 0
 # ==========================================
 # NOVA FUNÇÃO: FRONTEIRA DO MUNICÍPIO/AP
 # ==========================================
-# 2. O truque: o '_' em '_df_to_dissolve' diz ao Streamlit para não tentar criar hash disto!
+# 1. O sublinhado em '_gdf_alvo' é o "escudo" que impede o Streamlit de travar!
 @st.cache_data
-def get_limites(_df_to_dissolve, nome_da_area):
-    limite = _df_to_dissolve[['geometry']].dissolve()
+def get_limites(_gdf_alvo, nome_da_area):
+    limite = _gdf_alvo[['geometry']].dissolve()
     return json.loads(limite.to_json())
 
-# 3. Usamos a 'ap_selecionada' como a chave de memória segura
+# 2. Agora chamamos a função passando os DOIS argumentos corretamente
 dados_limite = get_limites(gdf, ap_selecionada)
-dados_json = json.loads(gdf.to_json())
-
-# ==========================================
-# NOVA FUNÇÃO: FRONTEIRA DO MUNICÍPIO/AP
-# ==========================================
-@st.cache_data
-def get_limites(df_to_dissolve):
-    # O dissolve apaga as linhas internas e deixa só o contorno!
-    limite = df_to_dissolve[['geometry']].dissolve()
-    return json.loads(limite.to_json())
-
-# Pega o limite baseado no GDF atual (filtrado ou não)
-dados_limite = get_limites(gdf)
 dados_json = json.loads(gdf.to_json())
 
 # ==========================================
