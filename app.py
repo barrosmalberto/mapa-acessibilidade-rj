@@ -85,12 +85,18 @@ max_val = gdf['valor_mapa'].max()
 def get_color_rustic(val):
     if max_val <= 0: return [40, 40, 40, 50]
     frac = val / max_val
-    # Paleta Rustic Charm (RGBA)
-    if frac == 0:     return [255, 252, 190, 60]
-    elif frac < 0.25: return [204, 197, 185, 200]
-    elif frac < 0.5:  return [64, 61, 57, 220]
-    elif frac < 0.75: return [37, 36, 34, 240]
-    else:             return [235, 94, 40, 255]
+    
+    # Limites muito mais "apertados" para destacar as pequenas variações
+    if frac == 0:
+        return [255, 252, 190, 60]
+    elif frac < 0.05: # Até 5% das oportunidades máximas
+        return [204, 197, 185, 200]
+    elif frac < 0.20: # Até 20% das oportunidades
+        return [64, 61, 57, 220]
+    elif frac < 0.50: # Até 50% das oportunidades
+        return [37, 36, 34, 240]
+    else:             # A elite das oportunidades (os picos do gráfico)
+        return [235, 94, 40, 255]
 
 gdf['cor'] = gdf['valor_mapa'].apply(get_color_rustic)
 gdf['altura'] = (gdf['valor_mapa'] / max_val) * altura_max if max_val > 0 else 0
