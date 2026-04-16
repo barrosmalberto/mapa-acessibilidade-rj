@@ -88,7 +88,7 @@ def get_color_rustic(val):
     
     # Limites muito mais "apertados" para destacar as pequenas variações
     if frac == 0:
-        return [255, 252, 190, 30]
+        return [255, 252, 190, 200]
     elif frac < 0.05: # Até 5% das oportunidades máximas
         return [204, 197, 185, 200]
     elif frac < 0.20: # Até 20% das oportunidades
