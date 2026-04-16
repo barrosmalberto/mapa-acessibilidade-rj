@@ -120,7 +120,7 @@ m3.metric("Média da Cidade", f"{int(gdf['valor_mapa'].mean()):,}".replace(",", 
 # dados_limite = get_limite_municipio(gdf)
 
 
-aba_mapa, aba_stats = st.tabs(["🗺️ Mapa Interativo", "📈 Estatísticas Detalhadas"])
+aba_mapa, aba_stats, aba_correlacoes = st.tabs(["🗺️ Mapa Interativo", "📈 Distribuição", "🔗 Correlações e Testes"])
 
 with aba_mapa:
     layer = pdk.Layer(
@@ -172,3 +172,25 @@ with aba_stats:
         top10 = gdf.nlargest(10, 'valor_mapa')[[col_id, 'valor_mapa']]
         top10.columns = ['Localidade', 'Qtd Oportunidades']
         st.dataframe(top10, hide_index=True, use_container_width=True)
+
+with aba_correlacoes:
+    st.markdown("### 🔗 Matriz de Correlação de Spearman")
+    st.caption("Mede a força e a direção da relação monotônica entre os indicadores de acessibilidade. Valores próximos a 1 (Azul) indicam forte correlação positiva.")
+    
+    # Isolar apenas as colunas numéricas de acessibilidade para a matriz
+    colunas_matriz = [col for col in gdf.columns if 'transit' in col or 'walk' in col]
+    
+    if len(colunas_matriz) > 1:
+        # Calcular a correlação de Spearman
+        df_matriz = gdf[colunas_matriz].corr(method='spearman')
+        
+        # Limpar os nomes das colunas e linhas usando a nossa função de formatação
+        nomes_limpos = {col: formatar_indicador(col) for col in colunas_matriz}
+        df_matriz = df_matriz.rename(columns=nomes_limpos, index=nomes_limpos)
+        
+        # Aplicar o estilo de Mapa de Calor (Gradiente de Vermelho para Azul)
+        matriz_estilizada = df_matriz.style.background_gradient(cmap='RdBu', vmin=-1, vmax=1).format("{:.2f}")
+        
+        st.dataframe(matriz_estilizada, use_container_width=True)
+    else:
+        st.warning("É necessário ter pelo menos dois indicadores de acessibilidade para calcular correlações.")
