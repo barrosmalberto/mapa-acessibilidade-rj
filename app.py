@@ -111,7 +111,7 @@ m3.metric("Média da Cidade", f"{int(gdf['valor_mapa'].mean()):,}".replace(",", 
 # ==========================================
 # ORGANIZAÇÃO EM ABAS (O SEGREDO DO LAYOUT)
 # ==========================================
-dados_limite = get_limite_municipio(gdf)
+# dados_limite = get_limite_municipio(gdf)
 
 
 aba_mapa, aba_stats = st.tabs(["🗺️ Mapa Interativo", "📈 Estatísticas Detalhadas"])
