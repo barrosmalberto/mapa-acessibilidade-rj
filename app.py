@@ -98,6 +98,9 @@ indicador = st.sidebar.selectbox(
 )
 
 # --- FILTRO DE ÁREA PROGRAMÁTICA ---
+# 1. Definimos um valor padrão seguro
+ap_selecionada = "Rio de Janeiro (Cidade Toda)" 
+
 if 'Area_Programatica' in gdf.columns and gdf['Area_Programatica'].nunique() > 1:
     lista_aps = ["Rio de Janeiro (Cidade Toda)"] + sorted(list(gdf['Area_Programatica'].dropna().unique()))
     ap_selecionada = st.sidebar.selectbox("🗺️ Filtrar por Área Programática:", lista_aps)
@@ -130,6 +133,19 @@ def get_color_rustic(val):
 
 gdf['cor'] = gdf['valor_mapa'].apply(get_color_rustic)
 gdf['altura'] = (gdf['valor_mapa'] / max_val) * altura_max if max_val > 0 else 0
+
+# ==========================================
+# NOVA FUNÇÃO: FRONTEIRA DO MUNICÍPIO/AP
+# ==========================================
+# 2. O truque: o '_' em '_df_to_dissolve' diz ao Streamlit para não tentar criar hash disto!
+@st.cache_data
+def get_limites(_df_to_dissolve, nome_da_area):
+    limite = _df_to_dissolve[['geometry']].dissolve()
+    return json.loads(limite.to_json())
+
+# 3. Usamos a 'ap_selecionada' como a chave de memória segura
+dados_limite = get_limites(gdf, ap_selecionada)
+dados_json = json.loads(gdf.to_json())
 
 # ==========================================
 # NOVA FUNÇÃO: FRONTEIRA DO MUNICÍPIO/AP
