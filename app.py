@@ -47,12 +47,12 @@ def formatar_indicador(nome_tecnico):
     nome = nome.replace('_30min_', ' em 30 min ')
     nome = nome.replace('_60min_', ' em 60 min ')
     nome = nome.replace('transit', 'via Transp. Público')
-    nome = nome.replace('walk', 'a Pé')
+    nome = nome.replace('walk', 'a pé')
     
     # 3. Limpar o Percentil (Ocultar o p50 que é o padrão, ou dar nome aos outros)
-    # nome = nome.replace('_p50', '')
-    # nome = nome.replace('_p5', ' (Cenário Otimista)')
-    # nome = nome.replace('_p95', ' (Cenário Pessimista)')
+    # nome = nome.replace('_p50', '_p50')
+    # nome = nome.replace('_p5', '_p5')
+    # nome = nome.replace('_p95', '_p95')
     
     return nome.strip()
 
@@ -101,7 +101,7 @@ dados_json = json.loads(gdf.to_json())
 # CABEÇALHO E MÉTRICAS (ESTATÍSTICAS RÁPIDAS)
 # ==========================================
 st.title("🏙️ Dashboard de Acessibilidade Urbana - RJ")
-st.subheader(f"Análise Atual: {indicador.replace('_', ' ').title()}")
+st.subheader(f"Análise Atual: {formatar_indicador(indicador)}")
 
 m1, m2, m3 = st.columns(3)
 m1.metric("Áreas Analisadas", f"{len(gdf):,}".replace(",", "."))
