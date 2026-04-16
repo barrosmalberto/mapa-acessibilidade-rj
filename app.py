@@ -59,10 +59,10 @@ def formatar_indicador(nome_tecnico):
 
 
 
-
 # ==========================================
 # 3. BARRA LATERAL (CONTROLOS)
 # ==========================================
+
 st.sidebar.title("Painel de Controle")
 
 colunas_acessibilidade = [col for col in gdf.columns if 'transit' in col or 'walk' in col]
@@ -111,6 +111,25 @@ m3.metric("Média da Cidade", f"{int(gdf['valor_mapa'].mean()):,}".replace(",", 
 # ==========================================
 # ORGANIZAÇÃO EM ABAS (O SEGREDO DO LAYOUT)
 # ==========================================
+@st.cache_data
+def get_limite_municipio(_gdf):
+    # O comando 'dissolve()' apaga as linhas internas e deixa só o contorno externo
+    limite = _gdf[['geometry']].dissolve()
+    return json.loads(limite.to_json())
+
+layer_limites = pdk.Layer(
+    "GeoJsonLayer",
+    data=dados_limite,
+    stroked=True,
+    filled=False, # Importante: False para não cobrir as cores do seu mapa!
+    get_line_color=[0, 0, 0, 255], # [R, G, B, Opacidade] - Preto absoluto
+    get_line_width=2, # Tamanho 2 como você pediu
+    line_width_min_pixels=2,
+)
+
+dados_limite = get_limite_municipio(gdf)
+
+
 aba_mapa, aba_stats = st.tabs(["🗺️ Mapa Interativo", "📈 Estatísticas Detalhadas"])
 
 with aba_mapa:
