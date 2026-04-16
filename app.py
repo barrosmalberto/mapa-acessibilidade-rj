@@ -189,7 +189,7 @@ with aba_mapa:
         data=dados_limite,
         stroked=True,
         filled=False, 
-        get_line_color=[255, 255, 255, 200], 
+        get_line_color=[0, 0, 0, 255], 
         get_line_width=2,
         line_width_min_pixels=2,
     )
@@ -199,7 +199,7 @@ with aba_mapa:
     view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=45)
 
     st.pydeck_chart(pdk.Deck(
-        map_style="dark", 
+        map_style="light", 
         initial_view_state=view,
         layers=[layer, layer_limites], 
         tooltip={"text": "Oportunidades: {valor_mapa}"}
