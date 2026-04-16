@@ -61,12 +61,19 @@ def formatar_indicador(nome_tecnico):
 
 
 # ==========================================
-# BARRA LATERAL (CONTROLOS)
+# 3. BARRA LATERAL (CONTROLOS)
 # ==========================================
 st.sidebar.title("Painel de Controle")
 
 colunas_acessibilidade = [col for col in gdf.columns if 'transit' in col or 'walk' in col]
-indicador = st.sidebar.selectbox("Selecione o Indicador:", colunas_acessibilidade)
+
+# Aqui o "format_func" chama a função que acabamos de criar acima!
+indicador = st.sidebar.selectbox(
+    "Selecione o Indicador:", 
+    colunas_acessibilidade,
+    format_func=formatar_indicador
+)
+
 altura_max = st.sidebar.slider("Exagero vertical (Altura):", 500, 5000, 2000)
 
 # ==========================================
