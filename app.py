@@ -10,6 +10,7 @@ import scipy
 import matplotlib
 import plotly.express as px
 import plotly.graph_objects as go
+from openai import OpenAI
 
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA
@@ -351,15 +352,38 @@ with aba_chat:
     # 3. A barra de digitação (Chat Input)
     if pergunta := st.chat_input("Ex: O que é o Índice de Gini?"):
         
-        # Adiciona a pergunta do usuário
+        # Adiciona a pergunta do usuário na tela e na memória
         with st.chat_message("user"):
             st.markdown(pergunta)
         st.session_state.mensagens.append({"role": "user", "content": pergunta})
         
-        # Lógica de Resposta do Assistente
-        # Por enquanto é uma resposta automática, mas aqui poderemos conectar uma IA futuramente
-        resposta = f"Você perguntou: '*{pergunta}*'. Como seu assistente, estou aqui para ajudar a analisar os dados de {formatar_indicador(indicador)} no Rio de Janeiro!"
+        # --- LÓGICA DO ROBÔ (CÉREBRO REAL COM OPENAI) ---
+        try:
+            # Puxa a chave secreta do cofre do Streamlit
+            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            
+            # Dá uma "personalidade" e contexto para a IA
+            mensagens_api = [
+                {"role": "system", "content": "Você é um Cientista de Dados Sênior e especialista em urbanismo. O seu objetivo é ajudar gestores públicos da Prefeitura do Rio de Janeiro a interpretar um dashboard de Acessibilidade Urbana. Explique conceitos como o 'Índice de Gini' e métricas de transporte de forma clara, executiva e direta."}
+            ]
+            
+            # Adiciona o histórico da conversa para a IA ter contexto
+            for msg in st.session_state.mensagens:
+                mensagens_api.append({"role": msg["role"], "content": msg["content"]})
+                
+            # Chama a API da OpenAI (usando o modelo rápido e barato)
+            resposta_api = client.chat.completions.create(
+                model="gpt-3.5-turbo", 
+                messages=mensagens_api
+            )
+            
+            resposta = resposta_api.choices[0].message.content
+            
+        except Exception as e:
+            # Caso a API falhe (falta de crédito, erro na chave, etc.)
+            resposta = f"Desculpe, ocorreu um erro de conexão com a Inteligência Artificial: {e}"
         
+        # Exibe a resposta final na tela e guarda na memória
         with st.chat_message("assistant"):
             st.markdown(resposta)
         st.session_state.mensagens.append({"role": "assistant", "content": resposta})
