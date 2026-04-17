@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA
 # ==========================================
-st.set_page_config(page_title="Dashboard Acessibilidade RJ", layout="wide")
+st.set_page_config(page_title="Painel de Acessibilidade RJ", layout="wide")
 
 @st.cache_data
 def load_data():
