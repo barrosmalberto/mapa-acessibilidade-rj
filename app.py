@@ -182,7 +182,13 @@ m3.metric("Média da Cidade", f"{int(gdf['valor_mapa'].mean()):,}".replace(",", 
 # ==========================================
 # ORGANIZAÇÃO EM ABAS
 # ==========================================
-aba_mapa, aba_stats, aba_correlacoes = st.tabs(["🗺️ Mapa Interativo", "📈 Distribuição", "🔗 Correlações e Testes"])
+# Adicionamos a aba "💬 Assistente Virtual"
+aba_mapa, aba_stats, aba_correlacoes, aba_chat = st.tabs([
+    "🗺️ Mapa Interativo", 
+    "📈 Distribuição", 
+    "🔗 Correlações e Testes",
+    "💬 Assistente Virtual"
+])
 
 with aba_mapa:
     layer = pdk.Layer(
@@ -328,3 +334,32 @@ with aba_correlacoes:
         st.dataframe(matriz_estilizada, use_container_width=True)
     else:
         st.warning("É necessário ter pelo menos dois indicadores no tempo selecionado para calcular correlações.")
+
+with aba_chat:
+    st.markdown("### 💬 Assistente Virtual de Acessibilidade")
+    st.caption("Tire suas dúvidas sobre os dados, o Índice de Gini ou peça ajuda para interpretar o mapa.")
+
+    # 1. Cria a "memória" do chat para não apagar ao mudar de aba
+    if "mensagens" not in st.session_state:
+        st.session_state.mensagens = []
+
+    # 2. Mostra o histórico de mensagens na tela
+    for msg in st.session_state.mensagens:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    # 3. A barra de digitação (Chat Input)
+    if pergunta := st.chat_input("Ex: O que é o Índice de Gini?"):
+        
+        # Adiciona a pergunta do usuário
+        with st.chat_message("user"):
+            st.markdown(pergunta)
+        st.session_state.mensagens.append({"role": "user", "content": pergunta})
+        
+        # Lógica de Resposta do Assistente
+        # Por enquanto é uma resposta automática, mas aqui poderemos conectar uma IA futuramente
+        resposta = f"Você perguntou: '*{pergunta}*'. Como seu assistente, estou aqui para ajudar a analisar os dados de {formatar_indicador(indicador)} no Rio de Janeiro!"
+        
+        with st.chat_message("assistant"):
+            st.markdown(resposta)
+        st.session_state.mensagens.append({"role": "assistant", "content": resposta})
