@@ -262,7 +262,7 @@ with aba_correlacoes:
     # --- NOVO: FILTRO PARA "ENXUGAR" A MATRIZ ---
     tempo_selecionado = st.radio(
         "Focar a análise em um tempo de deslocamento específico:",
-        ["Todos os tempos (Matriz Completa)", "Apenas 15 minutos", "Apenas 30 minutos", "Apenas 60 minutos"],
+        ["Matriz Completa", "Apenas 15 minutos", "Apenas 30 minutos", "Apenas 60 minutos"],
         horizontal=True
     )
     
