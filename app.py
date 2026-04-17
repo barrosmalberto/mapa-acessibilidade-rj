@@ -109,6 +109,11 @@ if 'Area_Programatica' in gdf.columns and gdf['Area_Programatica'].nunique() > 1
 
 altura_max = st.sidebar.slider("Exagero vertical (Altura):", 500, 5000, 2000)
 
+# CONTROLE DE ANGULAÇÃO ---
+angulo_mapa = st.sidebar.slider("📐 Angulação do Mapa:", min_value=0, max_value=60, value=45, step=5)
+st.sidebar.caption("💡 **Dica de Navegação:** Você também pode inclinar e girar o mapa livremente segurando o **botão direito do mouse** e arrastando.")
+
+
 # ==========================================
 # LÓGICA DE CORES E DADOS (COM BACKUP DO DATASET)
 # ==========================================
