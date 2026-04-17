@@ -245,7 +245,7 @@ with aba_stats:
     fig_gini.update_layout(height=280, margin=dict(l=10, r=10, t=40, b=10), template="plotly_dark")
     
     st.plotly_chart(fig_gini, use_container_width=True)
-    st.caption("O Índice de Gini mede a concentração de oportunidades. **0** representa igualdade perfeita (todos os bairros têm o mesmo acesso), enquanto **1** representa desigualdade extrema. A cor do marcador indica o nível crítico para políticas públicas.")
+    st.caption("O Índice de Gini mede a concentração de oportunidades em um único hexágono. Quanto mais próximo a **0**, maior a distribuição de oportunidades. Já o indicador **1** representa a concentração de oportunidades em um único hexágono")
     st.markdown("---")
 
     col_graf, col_tab = st.columns([2, 1])
