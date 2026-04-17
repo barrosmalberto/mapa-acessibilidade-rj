@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA
 # ==========================================
-st.set_page_config(page_title="Painel de Acessibilidade RJ", layout="wide")
+st.set_page_config(page_title="Dashboard de Acessibilidade RJ", layout="wide")
 
 @st.cache_data
 def load_data():
@@ -171,7 +171,7 @@ dados_json = json.loads(gdf.to_json())
 # ==========================================
 # CABEÇALHO E MÉTRICAS
 # ==========================================
-st.title("🏙️ Dashboard de Acessibilidade Urbana - RJ")
+st.title("🏙️ Painel de Acessibilidade Urbana - RJ")
 st.subheader(f"Análise Atual: {formatar_indicador(indicador)}")
 
 m1, m2, m3 = st.columns(3)
