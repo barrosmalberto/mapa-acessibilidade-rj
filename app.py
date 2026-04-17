@@ -205,8 +205,8 @@ with aba_mapa:
         stroked=True,
         filled=False, 
         get_line_color=[255, 255, 255, 200], 
-        get_line_width=3,
-        line_width_min_pixels=3,
+        get_line_width=1.5,
+        line_width_min_pixels=1.5,
     )
 
     centro_lat = gdf.geometry.centroid.y.mean()
