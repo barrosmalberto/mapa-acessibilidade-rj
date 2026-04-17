@@ -5,3 +5,4 @@ pyogrio
 scipy
 matplotlib
 plotly
+openai
