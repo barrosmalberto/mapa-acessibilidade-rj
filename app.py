@@ -89,7 +89,7 @@ def formatar_indicador(nome_tecnico):
 # ==========================================
 # BARRA LATERAL (CONTROLOS)
 # ==========================================
-st.sidebar.title("🎮 Painel de Controle")
+st.sidebar.title("🎛️ Painel de Controle")
 
 colunas_acessibilidade = [col for col in gdf.columns if 'transit' in col or 'walk' in col]
 
