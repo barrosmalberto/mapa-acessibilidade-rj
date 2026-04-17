@@ -257,17 +257,36 @@ with aba_stats:
 
 with aba_correlacoes:
     st.markdown("### 🔗 Matriz de Correlação de Spearman")
-    st.caption("Mede a força e a direção da relação monotônica entre os indicadores de acessibilidade. Valores próximos a 1 (Azul) indicam forte correlação positiva.")
+    st.caption("Mede a força e a direção da relação monotônica entre os indicadores. Valores próximos a 1 (Azul) indicam forte correlação positiva.")
     
+    # --- NOVO: FILTRO PARA "ENXUGAR" A MATRIZ ---
+    tempo_selecionado = st.radio(
+        "Focar a análise em um tempo de deslocamento específico:",
+        ["Todos os tempos (Matriz Completa)", "Apenas 15 minutos", "Apenas 30 minutos", "Apenas 60 minutos"],
+        horizontal=True
+    )
+    
+    # Isolar todas as colunas de acessibilidade
     colunas_matriz = [col for col in gdf.columns if 'transit' in col or 'walk' in col]
     
+    # Aplicar a lógica do seu colega: Cruzar tempos iguais com tempos iguais
+    if tempo_selecionado == "Apenas 15 minutos":
+        colunas_matriz = [col for col in colunas_matriz if '_15min_' in col]
+    elif tempo_selecionado == "Apenas 30 minutos":
+        colunas_matriz = [col for col in colunas_matriz if '_30min_' in col]
+    elif tempo_selecionado == "Apenas 60 minutos":
+        colunas_matriz = [col for col in colunas_matriz if '_60min_' in col]
+    
     if len(colunas_matriz) > 1:
+        # Calcular a correlação
         df_matriz = gdf[colunas_matriz].corr(method='spearman')
         
+        # Limpar os nomes das colunas
         nomes_limpos = {col: formatar_indicador(col) for col in colunas_matriz}
         df_matriz = df_matriz.rename(columns=nomes_limpos, index=nomes_limpos)
         
+        # Aplicar o estilo de Mapa de Calor
         matriz_estilizada = df_matriz.style.background_gradient(cmap='RdBu', vmin=-1, vmax=1).format("{:.2f}")
         st.dataframe(matriz_estilizada, use_container_width=True)
     else:
-        st.warning("É necessário ter pelo menos dois indicadores de acessibilidade para calcular correlações.")
+        st.warning("É necessário ter pelo menos dois indicadores no tempo selecionado para calcular correlações.")
