@@ -111,6 +111,19 @@ altura_max = st.sidebar.slider("Exagero vertical (Altura):", 500, 5000, 2000)
 # ==========================================
 # LÓGICA DE CORES E DADOS (COM BACKUP DO DATASET)
 # ==========================================
+def calcular_gini(valores):
+    # Foca apenas em áreas válidas, ignorando vazios absolutos
+    valores = np.sort(np.array(valores, dtype=np.float64))
+    valores = valores[valores > 0] 
+    if len(valores) < 2:
+        return 0.0
+    
+    n = len(valores)
+    index = np.arange(1, n + 1)
+    # Fórmula vetorizada do Gini para performance em milissegundos
+    gini = (np.sum((2 * index - n  - 1) * valores)) / (n * np.sum(valores))
+    return gini
+
 # Calcula o valor ANTES de aplicar o filtro para o Boxplot
 gdf['valor_mapa'] = gdf[indicador].fillna(0)
 
@@ -208,9 +221,40 @@ with aba_mapa:
     ))
 
 with aba_stats:
-    st.markdown("### 📊 Decomposição dos Dados")
+    st.markdown("### 📊 Decomposição e Desigualdade dos Dados")
     
+    # --- CÁLCULO E VISUAL DO ÍNDICE DE GINI ---
+    import plotly.graph_objects as go
+    
+    # Usa os dados filtrados ou a cidade toda, dependendo da seleção lateral
+    gini_val = calcular_gini(gdf['valor_mapa'])
+    
+    fig_gini = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = gini_val,
+        title = {'text': "Índice de Gini (Desigualdade Espacial)", 'font': {'size': 18}},
+        gauge = {
+            'axis': {'range': [0, 1]},
+            'bar': {'color': "white"},
+            'steps': [
+                {'range': [0.0, 0.3], 'color': "#2ca02c"}, # Verde (Baixa Desigualdade)
+                {'range': [0.3, 0.5], 'color': "#f5b111"}, # Amarelo (Média)
+                {'range': [0.5, 0.7], 'color': "#ff7f0e"}, # Laranja (Alta)
+                {'range': [0.7, 1.0], 'color': "#d62728"}  # Vermelho (Extrema Desigualdade)
+            ],
+        }
+    ))
+    fig_gini.update_layout(height=280, margin=dict(l=10, r=10, t=40, b=10), template="plotly_dark")
+    
+    st.plotly_chart(fig_gini, use_container_width=True)
+    st.caption("O Índice de Gini mede a concentração de oportunidades. **0** representa igualdade perfeita (todos os bairros têm o mesmo acesso), enquanto **1** representa desigualdade extrema. A cor do marcador indica o nível crítico para políticas públicas.")
+    st.markdown("---")
+    
+    # --- RESTANTE DA ABA ESTATÍSTICA (MANTENHA IGUAL) ---
     col_graf, col_tab = st.columns([2, 1])
+    
+    with col_graf:
+        st.markdown("**Distribuição de Oportunidades**")
     
     with col_graf:
         st.markdown("**Distribuição de Oportunidades**")
