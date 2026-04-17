@@ -109,11 +109,6 @@ if 'Area_Programatica' in gdf.columns and gdf['Area_Programatica'].nunique() > 1
 
 altura_max = st.sidebar.slider("Exagero vertical (Altura):", 500, 5000, 2000)
 
-# CONTROLE DE ANGULAÇÃO ---
-# angulo_mapa = st.sidebar.slider("📐 Angulação do Mapa:", min_value=0, max_value=60, value=45, step=5)
-# st.sidebar.caption("💡 **Dica de Navegação:** Você também pode inclinar e girar o mapa livremente segurando o **botão direito do mouse** e arrastando.")
-
-
 # ==========================================
 # LÓGICA DE CORES E DADOS (COM BACKUP DO DATASET)
 # ==========================================
@@ -215,18 +210,9 @@ with aba_mapa:
         line_width_min_pixels=3,
     )
 
-centro_lat = gdf.geometry.centroid.y.mean()
+    centro_lat = gdf.geometry.centroid.y.mean()
     centro_lon = gdf.geometry.centroid.x.mean()
-    
-    # NOVO: Câmera com transição suave (efeito cinemático) e angulação dinâmica
-    view = pdk.ViewState(
-        latitude=centro_lat, 
-        longitude=centro_lon, 
-        zoom=10, 
-        pitch=angulo_mapa,           # Conectado ao slider do menu lateral
-        transition_duration=1500,    # 1.5 segundos de voo suave ao mudar de AP
-        transition_easing="ease-in-out" # Acelera e desacelera suavemente
-    )
+    view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=45)
 
     st.pydeck_chart(pdk.Deck(
         map_style="dark", 
