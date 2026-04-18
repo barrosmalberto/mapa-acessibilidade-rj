@@ -63,27 +63,20 @@ gdf = load_data()
 # ==========================================
 def formatar_indicador(nome_tecnico):
     nome = nome_tecnico
-    
-    # 1. Traduzir o Tema (Oportunidades)
     nome = nome.replace('jobs_vinculos', 'Empregos')
     nome = nome.replace('schools_creche', 'Creches')
     nome = nome.replace('schools_pre', 'Pré-escolas')
     nome = nome.replace('schools_fundamental', 'Ensino Fundamental')
     nome = nome.replace('saude_primaria', 'Saúde Primária')
     nome = nome.replace('saude_emergencia', 'Saúde de Emergência')
-    
-    # 2. Traduzir o Tempo e o Modo
     nome = nome.replace('_15min_', ' em 15 min ')
     nome = nome.replace('_30min_', ' em 30 min ')
     nome = nome.replace('_60min_', ' em 60 min ')
     nome = nome.replace('transit', 'via Transp. Público')
     nome = nome.replace('walk', 'a pé')
-    
-    # 3. Limpar o Percentil
     nome = nome.replace('_p50', '')
     nome = nome.replace('_p5', ' (Otimista)')
     nome = nome.replace('_p95', ' (Pessimista)')
-    
     return nome.strip()
 
 # ==========================================
@@ -100,7 +93,6 @@ indicador = st.sidebar.selectbox(
 )
 
 # --- FILTRO DE ÁREA PROGRAMÁTICA ---
-# 1. Definimos um valor padrão seguro
 ap_selecionada = "Rio de Janeiro (Cidade Toda)" 
 
 if 'Area_Programatica' in gdf.columns and gdf['Area_Programatica'].nunique() > 1:
@@ -110,28 +102,21 @@ if 'Area_Programatica' in gdf.columns and gdf['Area_Programatica'].nunique() > 1
 altura_max = st.sidebar.slider("Exagero vertical (Altura):", 500, 5000, 2000)
 
 # ==========================================
-# LÓGICA DE CORES E DADOS (COM BACKUP DO DATASET)
+# LÓGICA DE CORES E DADOS
 # ==========================================
-
-# Calcula o valor ANTES de aplicar o filtro para o Boxplot
 gdf['valor_mapa'] = gdf[indicador].fillna(0)
-
-# Guarda o mapa completo da cidade
 gdf_completo = gdf.copy()
 
-# Aplica o filtro de AP (se o usuário não quiser a cidade toda)
 if ap_selecionada != "Rio de Janeiro (Cidade Toda)":
     gdf = gdf[gdf['Area_Programatica'] == ap_selecionada]
 
 max_val = gdf['valor_mapa'].max()
 
 def calcular_gini(valores):
-    # Foca apenas em áreas válidas, ignorando vazios absolutos
     valores = np.sort(np.array(valores, dtype=np.float64))
     valores = valores[valores > 0] 
     if len(valores) < 2:
         return 0.0
-    
     n = len(valores)
     index = np.arange(1, n + 1)
     gini = (np.sum((2 * index - n  - 1) * valores)) / (n * np.sum(valores))
@@ -140,25 +125,22 @@ def calcular_gini(valores):
 def get_color_sunset(val):
     if max_val <= 0: return [40, 40, 40, 50]
     frac = val / max_val
-    
-    # Valores zero ficam quase transparentes para não poluir
     if frac == 0:
         return [255, 255, 255, 10] 
     elif frac < 0.05: 
-        return [158, 1, 66, 200]    # Vermelho Escuro/Vinho
+        return [158, 1, 66, 200]
     elif frac < 0.20: 
-        return [244, 109, 67, 220]  # Laranja
+        return [244, 109, 67, 220]
     elif frac < 0.50: 
-        return [253, 174, 97, 240]  # Pêssego/Amarelo Queimado
+        return [253, 174, 97, 240]
     else:             
-        return [230, 245, 152, 255] # Amarelo Neon Brilhante (Os picos)
+        return [230, 245, 152, 255]
 
-# Não esqueça de atualizar a chamada da função:
 gdf['cor'] = gdf['valor_mapa'].apply(get_color_sunset)
 gdf['altura'] = (gdf['valor_mapa'] / max_val) * altura_max if max_val > 0 else 0
 
 # ==========================================
-# NOVA FUNÇÃO: FRONTEIRA DO MUNICÍPIO/AP
+# FRONTEIRA DO MUNICÍPIO/AP
 # ==========================================
 @st.cache_data
 def get_limites(_gdf_alvo, nome_da_area):
@@ -182,7 +164,6 @@ m3.metric("Média da Cidade", f"{int(gdf['valor_mapa'].mean()):,}".replace(",", 
 # ==========================================
 # ORGANIZAÇÃO EM ABAS
 # ==========================================
-# Adicionamos a aba "💬 Assistente Virtual"
 aba_mapa, aba_stats, aba_correlacoes, aba_chat = st.tabs([
     "🗺️ Mapa Interativo", 
     "📈 Distribuição", 
@@ -218,6 +199,7 @@ with aba_mapa:
 
     centro_lat = gdf.geometry.centroid.y.mean()
     centro_lon = gdf.geometry.centroid.x.mean()
+    
     view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=45)
 
     st.pydeck_chart(pdk.Deck(
@@ -230,7 +212,6 @@ with aba_mapa:
 with aba_stats:
     st.markdown("### 📊 Decomposição e Desigualdade dos Dados")
     
-    # --- CÁLCULO E VISUAL DO ÍNDICE DE GINI ---
     gini_val = calcular_gini(gdf['valor_mapa'])
     
     fig_gini = go.Figure(go.Indicator(
@@ -241,10 +222,10 @@ with aba_stats:
             'axis': {'range': [0, 1]},
             'bar': {'color': "white"},
             'steps': [
-                {'range': [0.0, 0.3], 'color': "#2ca02c"}, # Verde (Baixa Desigualdade)
-                {'range': [0.3, 0.5], 'color': "#f5b111"}, # Amarelo (Média)
-                {'range': [0.5, 0.7], 'color': "#ff7f0e"}, # Laranja (Alta)
-                {'range': [0.7, 1.0], 'color': "#d62728"}  # Vermelho (Extrema Desigualdade)
+                {'range': [0.0, 0.3], 'color': "#2ca02c"},
+                {'range': [0.3, 0.5], 'color': "#f5b111"},
+                {'range': [0.5, 0.7], 'color': "#ff7f0e"},
+                {'range': [0.7, 1.0], 'color': "#d62728"} 
             ],
         }
     ))
@@ -276,9 +257,6 @@ with aba_stats:
         top10.columns = ['Localidade', 'Qtd Oportunidades']
         st.dataframe(top10, hide_index=True, use_container_width=True)
 
-    # ==========================================
-    # CLUSTERIZAÇÃO POR AP (BOXPLOT COMPARTIVO)
-    # ==========================================
     st.markdown("---")
     st.markdown("**Clusterização de Oportunidades por Área Programática**")
     st.caption("Compare a desigualdade entre as regiões. Os 'pontos' fora das caixas indicam hexágonos excepcionais (ilhas de oportunidades).")
@@ -303,17 +281,14 @@ with aba_correlacoes:
     st.markdown("### 🔗 Matriz de Correlação de Spearman")
     st.caption("Mede a força e a direção da relação monotônica entre os indicadores. Valores próximos a 1 (Azul) indicam forte correlação positiva.")
     
-    # --- NOVO: FILTRO PARA "ENXUGAR" A MATRIZ ---
     tempo_selecionado = st.radio(
         "Focar a análise em um tempo de deslocamento específico:",
         ["Matriz Completa", "Apenas 15 minutos", "Apenas 30 minutos", "Apenas 60 minutos"],
         horizontal=True
     )
     
-    # Isolar todas as colunas de acessibilidade
     colunas_matriz = [col for col in gdf.columns if 'transit' in col or 'walk' in col]
     
-    # Aplicar a lógica do seu colega: Cruzar tempos iguais com tempos iguais
     if tempo_selecionado == "Apenas 15 minutos":
         colunas_matriz = [col for col in colunas_matriz if '_15min_' in col]
     elif tempo_selecionado == "Apenas 30 minutos":
@@ -322,73 +297,65 @@ with aba_correlacoes:
         colunas_matriz = [col for col in colunas_matriz if '_60min_' in col]
     
     if len(colunas_matriz) > 1:
-        # Calcular a correlação
         df_matriz = gdf[colunas_matriz].corr(method='spearman')
-        
-        # Limpar os nomes das colunas
         nomes_limpos = {col: formatar_indicador(col) for col in colunas_matriz}
         df_matriz = df_matriz.rename(columns=nomes_limpos, index=nomes_limpos)
-        
-        # Aplicar o estilo de Mapa de Calor
         matriz_estilizada = df_matriz.style.background_gradient(cmap='RdBu', vmin=-1, vmax=1).format("{:.2f}")
         st.dataframe(matriz_estilizada, use_container_width=True)
     else:
         st.warning("É necessário ter pelo menos dois indicadores no tempo selecionado para calcular correlações.")
 
-with aba_chat:
-    st.markdown("### 💬 Assistente Virtual de Acessibilidade")
-    st.caption("Tire suas dúvidas sobre os dados, o Índice de Gini ou peça ajuda para interpretar o mapa.")
-
-    # 1. Cria a "memória" do chat para não apagar ao mudar de aba
+# ==========================================
+# LÓGICA DO CHAT (FUNÇÃO FRAGMENTADA)
+# ==========================================
+@st.fragment
+def renderizar_chat():
     if "mensagens" not in st.session_state:
         st.session_state.mensagens = []
 
-    # 2. Mostra o histórico de mensagens na tela
     for msg in st.session_state.mensagens:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # 3. A barra de digitação (Chat Input)
     if pergunta := st.chat_input("Ex: O que é o Índice de Gini?"):
-        
-        # Exibe a pergunta do usuário na tela
         with st.chat_message("user"):
             st.markdown(pergunta)
+            
+        st.session_state.mensagens.append({"role": "user", "content": pergunta})
         
-        # --- LÓGICA DO ROBÔ (CÉREBRO REAL COM GOOGLE GEMINI GRÁTIS) ---
         try:
             import google.generativeai as genai
-            
-            # Puxa a chave secreta do cofre do Streamlit
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             
-            # Dá uma "personalidade" para a IA
-            instrucao = "Você é um Cientista de Dados Sênior e especialista em urbanismo. O seu objetivo é ajudar gestores públicos da Prefeitura do Rio de Janeiro a interpretar um dashboard de Acessibilidade Urbana. Explique conceitos como o 'Índice de Gini' e métricas de transporte de forma clara, executiva e direta."
+            # Usando o modelo original e ultra estável
+            model = genai.GenerativeModel('gemini-pro')
             
-            # Usa o modelo mais rápido e eficiente
-            model = genai.GenerativeModel(
-                'gemini-1.5-flash-latest',
-                system_instruction=instrucao
-            )            
-            # Converte a memória do Streamlit para o formato que o Google entende
-            gemini_history = []
-            for msg in st.session_state.mensagens:
+            instrucao = "Você é um Cientista de Dados Sênior e especialista em urbanismo. O seu objetivo é ajudar gestores públicos da Prefeitura do Rio de Janeiro a interpretar um dashboard de Acessibilidade Urbana. Explique conceitos como o 'Índice de Gini' e métricas de transporte de forma clara e executiva."
+            
+            gemini_history = [
+                {"role": "user", "parts": [instrucao]},
+                {"role": "model", "parts": ["Entendido! Estou pronto para analisar os dados urbanos do Rio de Janeiro."]}
+            ]
+            
+            for msg in st.session_state.mensagens[:-1]: 
                 role = "user" if msg["role"] == "user" else "model"
                 gemini_history.append({"role": role, "parts": [msg["content"]]})
                 
-            # Inicia o chat com o histórico e envia a nova pergunta
             chat = model.start_chat(history=gemini_history)
-            resposta_api = chat.send_message(pergunta)
             
-            resposta = resposta_api.text
+            with st.spinner("A analisar os dados da cidade..."):
+                resposta_api = chat.send_message(pergunta)
+                resposta = resposta_api.text
             
         except Exception as e:
             resposta = f"Desculpe, ocorreu um erro de conexão com a Inteligência Artificial: {e}"
         
-        # AGORA guarda a pergunta na memória (para não enviar duplicada antes)
-        st.session_state.mensagens.append({"role": "user", "content": pergunta})
-        
-        # Exibe a resposta final na tela e guarda na memória
         with st.chat_message("assistant"):
             st.markdown(resposta)
         st.session_state.mensagens.append({"role": "assistant", "content": resposta})
+
+# Renderiza a aba isolada
+with aba_chat:
+    st.markdown("### 💬 Assistente Virtual de Acessibilidade")
+    st.caption("Tire suas dúvidas sobre os dados, o Índice de Gini ou peça ajuda para interpretar o mapa.")
+    renderizar_chat()
