@@ -367,10 +367,9 @@ with aba_chat:
             
             # Usa o modelo mais rápido e eficiente
             model = genai.GenerativeModel(
-                'gemini-1.5-flash',
+                'gemini-1.5-flash-latest',
                 system_instruction=instrucao
-            )
-            
+            )            
             # Converte a memória do Streamlit para o formato que o Google entende
             gemini_history = []
             for msg in st.session_state.mensagens:
