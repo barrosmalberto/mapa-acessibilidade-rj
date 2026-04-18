@@ -10,7 +10,6 @@ import scipy
 import matplotlib
 import plotly.express as px
 import plotly.graph_objects as go
-from openai import OpenAI
 
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA
@@ -352,36 +351,43 @@ with aba_chat:
     # 3. A barra de digitação (Chat Input)
     if pergunta := st.chat_input("Ex: O que é o Índice de Gini?"):
         
-        # Adiciona a pergunta do usuário na tela e na memória
+        # Exibe a pergunta do usuário na tela
         with st.chat_message("user"):
             st.markdown(pergunta)
-        st.session_state.mensagens.append({"role": "user", "content": pergunta})
         
-        # --- LÓGICA DO ROBÔ (CÉREBRO REAL COM OPENAI) ---
+        # --- LÓGICA DO ROBÔ (CÉREBRO REAL COM GOOGLE GEMINI GRÁTIS) ---
         try:
+            import google.generativeai as genai
+            
             # Puxa a chave secreta do cofre do Streamlit
-            client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             
-            # Dá uma "personalidade" e contexto para a IA
-            mensagens_api = [
-                {"role": "system", "content": "Você é um Cientista de Dados Sênior e especialista em urbanismo. O seu objetivo é ajudar gestores públicos da Prefeitura do Rio de Janeiro a interpretar um dashboard de Acessibilidade Urbana. Explique conceitos como o 'Índice de Gini' e métricas de transporte de forma clara, executiva e direta."}
-            ]
+            # Dá uma "personalidade" para a IA
+            instrucao = "Você é um Cientista de Dados Sênior e especialista em urbanismo. O seu objetivo é ajudar gestores públicos da Prefeitura do Rio de Janeiro a interpretar um dashboard de Acessibilidade Urbana. Explique conceitos como o 'Índice de Gini' e métricas de transporte de forma clara, executiva e direta."
             
-            # Adiciona o histórico da conversa para a IA ter contexto
-            for msg in st.session_state.mensagens:
-                mensagens_api.append({"role": msg["role"], "content": msg["content"]})
-                
-            # Chama a API da OpenAI (usando o modelo rápido e barato)
-            resposta_api = client.chat.completions.create(
-                model="gpt-3.5-turbo", 
-                messages=mensagens_api
+            # Usa o modelo mais rápido e eficiente
+            model = genai.GenerativeModel(
+                'gemini-1.5-flash',
+                system_instruction=instrucao
             )
             
-            resposta = resposta_api.choices[0].message.content
+            # Converte a memória do Streamlit para o formato que o Google entende
+            gemini_history = []
+            for msg in st.session_state.mensagens:
+                role = "user" if msg["role"] == "user" else "model"
+                gemini_history.append({"role": role, "parts": [msg["content"]]})
+                
+            # Inicia o chat com o histórico e envia a nova pergunta
+            chat = model.start_chat(history=gemini_history)
+            resposta_api = chat.send_message(pergunta)
+            
+            resposta = resposta_api.text
             
         except Exception as e:
-            # Caso a API falhe (falta de crédito, erro na chave, etc.)
             resposta = f"Desculpe, ocorreu um erro de conexão com a Inteligência Artificial: {e}"
+        
+        # AGORA guarda a pergunta na memória (para não enviar duplicada antes)
+        st.session_state.mensagens.append({"role": "user", "content": pergunta})
         
         # Exibe a resposta final na tela e guarda na memória
         with st.chat_message("assistant"):
