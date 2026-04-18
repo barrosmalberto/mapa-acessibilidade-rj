@@ -5,4 +5,4 @@ pyogrio
 scipy
 matplotlib
 plotly
-openai
+google-generativeai
