@@ -327,24 +327,28 @@ def renderizar_chat():
             import google.generativeai as genai
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             
-            # 1. RADAR INTELIGENTE: Pergunta ao Google quais modelos a sua chave pode usar
+            # 1. RADAR INTELIGENTE: Pega o que o Google permite para a sua chave
             modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             
-            # 2. ESCOLHA AUTOMÁTICA: Pega o melhor modelo que estiver na lista
-            modelo_escolhido = "gemini-1.5-flash" # Valor de segurança
-            preferencias = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-1.0-pro', 'models/gemini-pro']
+            # 2. ESCOLHA AUTOMÁTICA: Atualizada para as versões de última geração!
+            modelo_escolhido = "gemini-2.5-flash" # Segurança atualizada
+            preferencias = [
+                'models/gemini-2.5-flash', 
+                'models/gemini-2.0-flash', 
+                'models/gemini-flash-latest', 
+                'models/gemini-pro-latest'
+            ]
             
             for pref in preferencias:
                 if pref in modelos_disponiveis:
                     modelo_escolhido = pref.replace('models/', '')
                     break
             
-            # Inicializa a IA com o modelo que sabemos que existe
+            # Inicializa a IA com o modelo super moderno que o radar pescou
             model = genai.GenerativeModel(modelo_escolhido)
             
             instrucao = "Você é um Cientista de Dados Sênior e especialista em urbanismo. O seu objetivo é ajudar gestores públicos da Prefeitura do Rio de Janeiro a interpretar um dashboard de Acessibilidade Urbana. Explique conceitos como o 'Índice de Gini' e métricas de transporte de forma clara e executiva."
             
-            # Injetamos a personalidade como parte da conversa (compatível com todas as versões)
             gemini_history = [
                 {"role": "user", "parts": [instrucao]},
                 {"role": "model", "parts": ["Entendido! Estou pronto para analisar os dados urbanos do Rio de Janeiro."]}
@@ -356,13 +360,11 @@ def renderizar_chat():
                 
             chat = model.start_chat(history=gemini_history)
             
-            # Mostra na tela qual modelo foi escolhido para sabermos o que está a acontecer
             with st.spinner(f"A analisar dados (via {modelo_escolhido})..."):
                 resposta_api = chat.send_message(pergunta)
                 resposta = resposta_api.text
             
         except Exception as e:
-            # Se ainda der erro, o código vai cuspir a lista exata de modelos que você tem acesso!
             lista_modelos = modelos_disponiveis if 'modelos_disponiveis' in locals() else 'Erro ao buscar modelos'
             resposta = f"**Falha de Conexão com a IA.**\nErro técnico: {e}\n\n*Modelos liberados para a sua chave:* {lista_modelos}"
         
