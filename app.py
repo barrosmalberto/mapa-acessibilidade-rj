@@ -185,12 +185,12 @@ with aba_mapa:
     layer_calor = pdk.Layer(
         "HeatmapLayer",
         data=df_calor,
-        opacity=0.7,
+        opacity=0.8,         # Aumentamos a opacidade para a cor ficar mais viva
         get_position='[lon, lat]',
         get_weight='peso',
-        radius_pixels=60, 
-        intensity=1,
-        threshold=0.05
+        radius_pixels=40,    # Reduzimos de 60 para 40: o calor concentra-se nos bairros exatos em vez de borrar a cidade toda
+        intensity=3.0,       # Triplicamos a força bruta (de 1 para 3): os picos de oportunidade vão brilhar muito mais forte
+        threshold=0.08       # Aumentamos o limite mínimo para que áreas com pouquíssimas oportunidades fiquem apagadas (destacando a desigualdade)
     )
 
     # --- CAMADA 2: HEXÁGONOS 3D (As "Torres") ---
