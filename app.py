@@ -327,16 +327,16 @@ def renderizar_chat():
             import google.generativeai as genai
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             
-            # 1. RADAR INTELIGENTE: Pega o que o Google permite para a sua chave
+            # 1. RADAR INTELIGENTE
             modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             
-            # 2. ESCOLHA AUTOMÁTICA: Atualizada para as versões de última geração!
-            modelo_escolhido = "gemini-2.0-flash" 
+            # 2. ESCOLHA AUTOMÁTICA: Foco total nas versões "Lite" (feitas para alto volume e baixo consumo)
+            modelo_escolhido = "gemini-2.5-flash-lite" 
             preferencias = [
-                'models/gemini-2.0-flash',       # Prioridade 1: Rápido, inteligente e com limite maior (15/min)
-                'models/gemini-2.0-flash-lite',  # Prioridade 2: Versão mais leve e rápida
-                'models/gemini-2.5-flash',       # Prioridade 3: O mais novo, mas restrito a 5/min
-                'models/gemini-flash-latest'
+                'models/gemini-2.5-flash-lite', 
+                'models/gemini-2.0-flash-lite', 
+                'models/gemini-flash-lite-latest',
+                'models/gemini-2.0-flash'
             ]
             
             for pref in preferencias:
@@ -344,7 +344,6 @@ def renderizar_chat():
                     modelo_escolhido = pref.replace('models/', '')
                     break
             
-            # Inicializa a IA com o modelo super moderno que o radar pescou
             model = genai.GenerativeModel(modelo_escolhido)
             
             instrucao = "Você é um Cientista de Dados Sênior e especialista em urbanismo. O seu objetivo é ajudar gestores públicos da Prefeitura do Rio de Janeiro a interpretar um dashboard de Acessibilidade Urbana. Explique conceitos como o 'Índice de Gini' e métricas de transporte de forma clara e executiva."
@@ -354,7 +353,11 @@ def renderizar_chat():
                 {"role": "model", "parts": ["Entendido! Estou pronto para analisar os dados urbanos do Rio de Janeiro."]}
             ]
             
-            for msg in st.session_state.mensagens[:-1]: 
+            # 3. TRUQUE DE ARQUITETURA: Memória Curta
+            # Pega apenas as últimas 4 mensagens do histórico (evita estourar o limite de tokens do Google)
+            historico_recente = st.session_state.mensagens[-5:-1] if len(st.session_state.mensagens) > 4 else st.session_state.mensagens[:-1]
+            
+            for msg in historico_recente: 
                 role = "user" if msg["role"] == "user" else "model"
                 gemini_history.append({"role": role, "parts": [msg["content"]]})
                 
@@ -365,8 +368,7 @@ def renderizar_chat():
                 resposta = resposta_api.text
             
         except Exception as e:
-            lista_modelos = modelos_disponiveis if 'modelos_disponiveis' in locals() else 'Erro ao buscar modelos'
-            resposta = f"**Falha de Conexão com a IA.**\nErro técnico: {e}\n\n*Modelos liberados para a sua chave:* {lista_modelos}"
+            resposta = f"**Aguarde um momento.** O limite de processamento rápido foi atingido. Por favor, aguarde 30 segundos e faça a pergunta novamente.\n\n*(Detalhe técnico: {e})*"
         
         with st.chat_message("assistant"):
             st.markdown(resposta)
