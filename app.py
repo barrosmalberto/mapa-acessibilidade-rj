@@ -331,12 +331,12 @@ def renderizar_chat():
             modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             
             # 2. ESCOLHA AUTOMÁTICA: Atualizada para as versões de última geração!
-            modelo_escolhido = "gemini-2.5-flash" # Segurança atualizada
+            modelo_escolhido = "gemini-2.0-flash" 
             preferencias = [
-                'models/gemini-2.5-flash', 
-                'models/gemini-2.0-flash', 
-                'models/gemini-flash-latest', 
-                'models/gemini-pro-latest'
+                'models/gemini-2.0-flash',       # Prioridade 1: Rápido, inteligente e com limite maior (15/min)
+                'models/gemini-2.0-flash-lite',  # Prioridade 2: Versão mais leve e rápida
+                'models/gemini-2.5-flash',       # Prioridade 3: O mais novo, mas restrito a 5/min
+                'models/gemini-flash-latest'
             ]
             
             for pref in preferencias:
