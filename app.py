@@ -172,32 +172,10 @@ aba_mapa, aba_stats, aba_correlacoes, aba_chat = st.tabs([
 ])
 
 with aba_mapa:
-    # --- NOVO: PREPARAÇÃO DOS DADOS PARA O MAPA DE CALOR ---
-    df_calor = pd.DataFrame({
-        'lon': gdf.geometry.centroid.x,
-        'lat': gdf.geometry.centroid.y,
-        'peso': gdf['valor_mapa']
-    })
-    
-    df_calor = df_calor[df_calor['peso'] > 0]
-
-    # --- CAMADA 1: MAPA DE CALOR (O "Chão" Térmico) ---
-    layer_calor = pdk.Layer(
-        "HeatmapLayer",
-        data=df_calor,
-        opacity=0.8,         # Aumentamos a opacidade para a cor ficar mais viva
-        get_position='[lon, lat]',
-        get_weight='peso',
-        radius_pixels=40,    # Reduzimos de 60 para 40: o calor concentra-se nos bairros exatos em vez de borrar a cidade toda
-        intensity=3.0,       # Triplicamos a força bruta (de 1 para 3): os picos de oportunidade vão brilhar muito mais forte
-        threshold=0.08       # Aumentamos o limite mínimo para que áreas com pouquíssimas oportunidades fiquem apagadas (destacando a desigualdade)
-    )
-
-    # --- CAMADA 2: HEXÁGONOS 3D (As "Torres") ---
-    layer_hex = pdk.Layer(
+    layer = pdk.Layer(
         "GeoJsonLayer",
         data=dados_json,
-        opacity=0.6, 
+        opacity=0.5,
         stroked=True,
         get_line_color=[77, 77, 77, 100], 
         line_width_min_pixels=0.5,
@@ -209,7 +187,6 @@ with aba_mapa:
         auto_highlight=True
     )
 
-    # --- CAMADA 3: FRONTEIRAS (A "Cerca" Branca) ---
     layer_limites = pdk.Layer(
         "GeoJsonLayer",
         data=dados_limite,
@@ -225,11 +202,10 @@ with aba_mapa:
     
     view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=45)
 
-    # Renderiza as 3 camadas
     st.pydeck_chart(pdk.Deck(
         map_style="dark", 
         initial_view_state=view,
-        layers=[layer_calor, layer_hex, layer_limites], 
+        layers=[layer, layer_limites], 
         tooltip={"text": "Oportunidades: {valor_mapa}"}
     ))
 
@@ -354,7 +330,7 @@ def renderizar_chat():
             # 1. RADAR INTELIGENTE
             modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             
-            # 2. ESCOLHA AUTOMÁTICA
+            # 2. ESCOLHA AUTOMÁTICA: Foco total nas versões "Lite" (feitas para alto volume e baixo consumo)
             modelo_escolhido = "gemini-2.5-flash-lite" 
             preferencias = [
                 'models/gemini-2.5-flash-lite', 
@@ -378,6 +354,7 @@ def renderizar_chat():
             ]
             
             # 3. TRUQUE DE ARQUITETURA: Memória Curta
+            # Pega apenas as últimas 4 mensagens do histórico (evita estourar o limite de tokens do Google)
             historico_recente = st.session_state.mensagens[-5:-1] if len(st.session_state.mensagens) > 4 else st.session_state.mensagens[:-1]
             
             for msg in historico_recente: 
