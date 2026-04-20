@@ -327,11 +327,12 @@ def renderizar_chat():
             import google.generativeai as genai
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             
-            # Usando o modelo original e ultra estável
-            model = genai.GenerativeModel('gemini-pro')
+            # Usando a nomenclatura oficial e atualizada do Google (1.5 Flash)
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
             instrucao = "Você é um Cientista de Dados Sênior e especialista em urbanismo. O seu objetivo é ajudar gestores públicos da Prefeitura do Rio de Janeiro a interpretar um dashboard de Acessibilidade Urbana. Explique conceitos como o 'Índice de Gini' e métricas de transporte de forma clara e executiva."
             
+            # Injetamos a personalidade no histórico
             gemini_history = [
                 {"role": "user", "parts": [instrucao]},
                 {"role": "model", "parts": ["Entendido! Estou pronto para analisar os dados urbanos do Rio de Janeiro."]}
