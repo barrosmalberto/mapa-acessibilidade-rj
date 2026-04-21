@@ -392,41 +392,45 @@ with aba_correlacoes:
         matriz_socio_estilizada = df_matriz_socio.style.background_gradient(cmap='RdBu', vmin=-1, vmax=1).format("{:.2f}")
         st.dataframe(matriz_socio_estilizada, use_container_width=True)
         
-        # ==========================================
-        # GRÁFICOS DE DISPERSÃO (ATUALIZADO)
+# ==========================================
+        # GRÁFICOS DE DISPERSÃO (SIMPLES E DINÂMICO)
         # ==========================================
         st.markdown("---")
         st.markdown(f"#### 📍 Visão de Dispersão: **{formatar_indicador(indicador)}** vs Dados Sociais")
-        st.caption("Cada ponto é uma área do mapa. A **linha preta** mostra a tendência. Foram removidas áreas com zero acessos.")
+        st.caption("Cada ponto é uma área do mapa. A linha mostra a tendência. Foram removidas áreas com zero acessos.")
         
         cols_graficos = st.columns(len(cols_socio))
         
+        # Lógica de Inversão de Tema: Detecta se o Streamlit está no modo dark
+        try:
+            tema_escuro = st.get_option("theme.base") == "dark"
+        except:
+            tema_escuro = False
+
+        # Define Preto Fosco (Tema Claro) ou Branco Fosco (Tema Escuro)
+        cor_ponto = "rgba(255, 255, 255, 0.5)" if tema_escuro else "rgba(0, 0, 0, 0.5)"
+        cor_linha = "white" if tema_escuro else "black"
+        
         for i, var_socio in enumerate(cols_socio):
             with cols_graficos[i]:
-                # 1. Filtro: Pega as colunas e remove nulos
                 df_plot = gdf[[indicador, var_socio]].replace([np.inf, -np.inf], np.nan).dropna()
-                
-                # 2. Performance: Mantém apenas valores > 0
                 df_plot = df_plot[(df_plot[indicador] > 0) & (df_plot[var_socio] > 0)]
                 
-                # 3. Defesa: Só cria o gráfico se houver mais de 1 ponto válido (Evita o bug da Saúde de Emergência)
                 if len(df_plot) > 1: 
-                    # Amostragem inteligente
                     if len(df_plot) > 3000:
                         df_plot = df_plot.sample(3000, random_state=42)
                     
-                    # Gráfico de dispersão com Círculos Pretos
+                    # Gráfico com círculos foscos dinâmicos
                     fig_disp = px.scatter(
                         df_plot,
                         x=indicador,
                         y=var_socio,
-                        opacity=0.5,
-                        color_discrete_sequence=['black'], # Círculos Pretos
+                        color_discrete_sequence=[cor_ponto],
                         labels={indicador: "Oportunidades", var_socio: formatar_indicador(var_socio)},
                         title=f"{formatar_indicador(var_socio)}"
                     )
                     
-                    # Linha contínua Preta
+                    # Linha de tendência dinâmica
                     try:
                         z = np.polyfit(df_plot[indicador], df_plot[var_socio], 1)
                         p = np.poly1d(z)
@@ -436,22 +440,17 @@ with aba_correlacoes:
                             y=p(df_plot[indicador]), 
                             mode='lines', 
                             name='Tendência', 
-                            line=dict(color='black', width=3), # Linha Preta
+                            line=dict(color=cor_linha, width=3),
                             showlegend=False
                         )
                     except:
-                        pass # Se a matemática falhar por dados anômalos, o código segue rodando
+                        pass
                     
-                    # Usa fundo claro para o preto ficar visível e elegante
-                    fig_disp.update_layout(
-                        template="plotly_white", 
-                        margin=dict(l=10, r=10, t=40, b=10), 
-                        height=300
-                    )
+                    # Sem template engessado: Fundo fica transparente e adapta ao Streamlit
+                    fig_disp.update_layout(margin=dict(l=10, r=10, t=40, b=10), height=300)
                     
-                    st.plotly_chart(fig_disp, use_container_width=True)
+                    st.plotly_chart(fig_disp, use_container_width=True, theme="streamlit")
                 else:
-                    # O que mostrar se não houver dados (ex: Saúde de Emergência a Pé)
                     st.info("📍 Poucos ou nenhum acesso nesta região para gerar gráfico.")
 
 # ==========================================
