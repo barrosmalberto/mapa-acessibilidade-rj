@@ -339,9 +339,9 @@ with aba_stats:
         st.info("Não há dados de Área Programática suficientes para gerar o gráfico comparativo.")
 
 with aba_correlacoes:
-    # --- TABELA 1: ACESSIBILIDADE VS ACESSIBILIDADE ---
-    st.markdown("### 🔗 Matriz: Acessibilidade vs Acessibilidade")
-    st.caption("Mede a força e a direção da relação entre os indicadores. Valores próximos a *1* (Azul) indicam forte correlação positiva.")
+    # --- TABELA 1: ACESSIBILIDADE X ACESSIBILIDADE ---
+    st.markdown("### 🔗 Matriz: Acessibilidade X Acessibilidade")
+    # st.caption("Mede a força e a direção da relação entre os indicadores. Valores próximos a *1* (Azul) indicam forte correlação positiva.")
     
     tempo_selecionado = st.radio(
         "Focar a análise em um tempo de deslocamento específico:",
@@ -371,7 +371,7 @@ with aba_correlacoes:
     # TABELA 2: SOCIOECONÔMICA
     # ==========================================
     st.markdown("---")
-    st.markdown("#### 📉 Matriz: Acessibilidade vs Vulnerabilidade Social")
+    st.markdown("#### 📉 Matriz: Acessibilidade X Vulnerabilidade Social")
     st.caption("**Tons de Vermelho (-)** apresentam a falta de infraestrutura")
 
     # Verifica se as colunas socioeconômicas existem no nosso DataFrame
@@ -396,7 +396,7 @@ with aba_correlacoes:
         # GRÁFICOS DE DISPERSÃO (SÓLIDO E MINIMALISTA)
         # ==========================================
         st.markdown("---")
-        st.markdown(f"#### 📍 Visão de Dispersão: **{formatar_indicador(indicador)}** vs Dados Sociais")
+        st.markdown(f"#### 📍 Visão de Dispersão: **{formatar_indicador(indicador)}** X Dados Sociais")
         st.caption("Cada ponto é uma área do mapa. A linha mostra a tendência. Foram removidas áreas com zero acessos.")
         
         cols_graficos = st.columns(len(cols_socio))
