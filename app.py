@@ -393,57 +393,66 @@ with aba_correlacoes:
         st.dataframe(matriz_socio_estilizada, use_container_width=True)
         
         # ==========================================
-        # GRÁFICOS DE DISPERSÃO (NOVO)
+        # GRÁFICOS DE DISPERSÃO (ATUALIZADO)
         # ==========================================
         st.markdown("---")
         st.markdown(f"#### 📍 Visão de Dispersão: **{formatar_indicador(indicador)}** vs Dados Sociais")
-        st.caption("Cada ponto é uma área do mapa. A **linha vermelha** mostra claramente a tendência (se sobe ou se desce juntos). Foram removidas áreas com zero acessos para garantir alta performance.")
+        st.caption("Cada ponto é uma área do mapa. A **linha preta** mostra a tendência. Foram removidas áreas com zero acessos.")
         
         cols_graficos = st.columns(len(cols_socio))
         
         for i, var_socio in enumerate(cols_socio):
-            # 1. Filtro: Pega as colunas e remove valores não calculáveis/nulos
-            df_plot = gdf[[indicador, var_socio]].replace([np.inf, -np.inf], np.nan).dropna()
-            
-            # 2. Performance: Mantém "apenas o que se correlaciona de verdade" (Remove zeros)
-            df_plot = df_plot[(df_plot[indicador] > 0) & (df_plot[var_socio] > 0)]
-            
-            if not df_plot.empty:
-                # 3. Amostragem inteligente: Se a AP for gigante, limita a 3000 pontos aleatórios para não travar a tela
-                if len(df_plot) > 3000:
-                    df_plot = df_plot.sample(3000, random_state=42)
+            with cols_graficos[i]:
+                # 1. Filtro: Pega as colunas e remove nulos
+                df_plot = gdf[[indicador, var_socio]].replace([np.inf, -np.inf], np.nan).dropna()
                 
-                # Monta o gráfico de pontos básicos
-                fig_disp = px.scatter(
-                    df_plot,
-                    x=indicador,
-                    y=var_socio,
-                    opacity=0.5,
-                    labels={indicador: "Nº Oportunidades", var_socio: formatar_indicador(var_socio)},
-                    title=f"Tendência: {formatar_indicador(var_socio)}"
-                )
+                # 2. Performance: Mantém apenas valores > 0
+                df_plot = df_plot[(df_plot[indicador] > 0) & (df_plot[var_socio] > 0)]
                 
-                # 4. Cálculo matemático blindado (Numpy Polyfit) para a Linha de Tendência Contínua
-                z = np.polyfit(df_plot[indicador], df_plot[var_socio], 1)
-                p = np.poly1d(z)
-                
-                # Adiciona a linha vermelha contínua
-                fig_disp.add_scatter(
-                    x=df_plot[indicador], 
-                    y=p(df_plot[indicador]), 
-                    mode='lines', 
-                    name='Tendência', 
-                    line=dict(color='red', width=3),
-                    showlegend=False
-                )
-                
-                fig_disp.update_layout(template="plotly_dark", margin=dict(l=10, r=10, t=40, b=10), height=300)
-                
-                with cols_graficos[i]:
-                    st.plotly_chart(fig_disp, use_container_width=True)
+                # 3. Defesa: Só cria o gráfico se houver mais de 1 ponto válido (Evita o bug da Saúde de Emergência)
+                if len(df_plot) > 1: 
+                    # Amostragem inteligente
+                    if len(df_plot) > 3000:
+                        df_plot = df_plot.sample(3000, random_state=42)
                     
-    else:
-        st.info("Arquivo de territórios (dados sociais) não encontrado. A matriz ficará invisível até o banco de dados ser conectado.")
+                    # Gráfico de dispersão com Círculos Pretos
+                    fig_disp = px.scatter(
+                        df_plot,
+                        x=indicador,
+                        y=var_socio,
+                        opacity=0.5,
+                        color_discrete_sequence=['black'], # Círculos Pretos
+                        labels={indicador: "Oportunidades", var_socio: formatar_indicador(var_socio)},
+                        title=f"{formatar_indicador(var_socio)}"
+                    )
+                    
+                    # Linha contínua Preta
+                    try:
+                        z = np.polyfit(df_plot[indicador], df_plot[var_socio], 1)
+                        p = np.poly1d(z)
+                        
+                        fig_disp.add_scatter(
+                            x=df_plot[indicador], 
+                            y=p(df_plot[indicador]), 
+                            mode='lines', 
+                            name='Tendência', 
+                            line=dict(color='black', width=3), # Linha Preta
+                            showlegend=False
+                        )
+                    except:
+                        pass # Se a matemática falhar por dados anômalos, o código segue rodando
+                    
+                    # Usa fundo claro para o preto ficar visível e elegante
+                    fig_disp.update_layout(
+                        template="plotly_white", 
+                        margin=dict(l=10, r=10, t=40, b=10), 
+                        height=300
+                    )
+                    
+                    st.plotly_chart(fig_disp, use_container_width=True)
+                else:
+                    # O que mostrar se não houver dados (ex: Saúde de Emergência a Pé)
+                    st.info("📍 Poucos ou nenhum acesso nesta região para gerar gráfico.")
 
 # ==========================================
 # LÓGICA DO CHAT (FUNÇÃO FRAGMENTADA)
