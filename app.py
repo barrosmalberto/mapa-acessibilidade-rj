@@ -342,8 +342,6 @@ with aba_correlacoes:
     # --- TABELA 1: ACESSIBILIDADE VS ACESSIBILIDADE ---
     st.markdown("### 🔗 Matriz: Acessibilidade vs Acessibilidade")
     st.caption("Mede a força e a direção da relação entre os indicadores. Valores próximos a *1* (Azul) indicam forte correlação positiva.")
-
-).")
     
     tempo_selecionado = st.radio(
         "Focar a análise em um tempo de deslocamento específico:",
