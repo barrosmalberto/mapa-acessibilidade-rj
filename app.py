@@ -54,6 +54,35 @@ def load_data():
     else:
         gdf['Area_Programatica'] = "Base de APs não encontrada"
 
+    # ==========================================
+    # CRUZAMENTO ESPACIAL: DADOS SOCIOECONÔMICOS
+    # ==========================================
+    nome_arquivo_socio = "territorios_poly_expansao.geojson"
+    if os.path.exists(nome_arquivo_socio):
+        try:
+            socio_gdf = gpd.read_file(nome_arquivo_socio)
+            if socio_gdf.crs != "EPSG:4326":
+                socio_gdf = socio_gdf.to_crs(epsg=4326)
+            
+            # Garante que criamos o centroide apenas se não existir
+            if 'gdf_centroides' not in locals():
+                gdf_centroides = gdf.copy()
+                gdf_centroides['geometry'] = gdf_centroides.geometry.centroid
+                
+            vars_socio = ['IPM', 'Rnd_p_capi', 'Tx_desocup']
+            cols_to_keep = ['geometry'] + [c for c in vars_socio if c in socio_gdf.columns]
+            
+            cruzamento_socio = gpd.sjoin(gdf_centroides, socio_gdf[cols_to_keep], how='left', predicate='within')
+            
+            # Removemos duplicações caso haja sobreposição minúscula de polígonos
+            cruzamento_socio = cruzamento_socio[~cruzamento_socio.index.duplicated(keep='first')]
+            
+            for var in vars_socio:
+                if var in cruzamento_socio.columns:
+                    gdf[var] = pd.to_numeric(cruzamento_socio[var], errors='coerce')
+        except Exception as e:
+            print(f"Aviso ao carregar dados socioeconômicos: {e}")
+
     return gdf
 
 gdf = load_data()
@@ -77,6 +106,12 @@ def formatar_indicador(nome_tecnico):
     nome = nome.replace('_p50', '')
     nome = nome.replace('_p5', ' (Otimista)')
     nome = nome.replace('_p95', ' (Pessimista)')
+    
+    # Formatação das variáveis socioeconômicas
+    nome = nome.replace('IPM', 'Índ. Pobreza Multidimensional (IPM)')
+    nome = nome.replace('Rnd_p_capi', 'Renda per capita')
+    nome = nome.replace('Tx_desocup', 'Taxa de Desocupação')
+    
     return nome.strip()
 
 # ==========================================
@@ -172,10 +207,34 @@ aba_mapa, aba_stats, aba_correlacoes, aba_chat = st.tabs([
 ])
 
 with aba_mapa:
-    layer = pdk.Layer(
+    # --- NOVO: PREPARAÇÃO DOS DADOS PARA O MAPA DE CALOR ---
+    # Extraímos as coordenadas centrais de cada hexágono para gerar o calor
+    df_calor = pd.DataFrame({
+        'lon': gdf.geometry.centroid.x,
+        'lat': gdf.geometry.centroid.y,
+        'peso': gdf['valor_mapa']
+    })
+    
+    # Removemos os zeros para não poluir as áreas vazias
+    df_calor = df_calor[df_calor['peso'] > 0]
+
+    # --- CAMADA 1: MAPA DE CALOR (O "Chão" Térmico) ---
+    layer_calor = pdk.Layer(
+        "HeatmapLayer",
+        data=df_calor,
+        opacity=0.7,
+        get_position='[lon, lat]',
+        get_weight='peso',
+        radius_pixels=60,  # Define o quão "espalhado" é o calor
+        intensity=1,
+        threshold=0.05
+    )
+
+    # --- CAMADA 2: HEXÁGONOS 3D (As "Torres") ---
+    layer_hex = pdk.Layer(
         "GeoJsonLayer",
         data=dados_json,
-        opacity=0.5,
+        opacity=0.6, # Ligeiramente transparente para deixar o calor brilhar por baixo
         stroked=True,
         get_line_color=[77, 77, 77, 100], 
         line_width_min_pixels=0.5,
@@ -187,14 +246,15 @@ with aba_mapa:
         auto_highlight=True
     )
 
+    # --- CAMADA 3: FRONTEIRAS (A "Cerca" Branca) ---
     layer_limites = pdk.Layer(
         "GeoJsonLayer",
         data=dados_limite,
         stroked=True,
         filled=False, 
         get_line_color=[255, 255, 255, 200], 
-        get_line_width=1.5,
-        line_width_min_pixels=1.5,
+        get_line_width=3,
+        line_width_min_pixels=3,
     )
 
     centro_lat = gdf.geometry.centroid.y.mean()
@@ -202,10 +262,11 @@ with aba_mapa:
     
     view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=45)
 
+    # Renderizamos as 3 camadas em formato "Sanduíche" (Calor no fundo, Hexágonos no meio, Fronteira no topo)
     st.pydeck_chart(pdk.Deck(
         map_style="dark", 
         initial_view_state=view,
-        layers=[layer, layer_limites], 
+        layers=[layer_calor, layer_hex, layer_limites], 
         tooltip={"text": "Oportunidades: {valor_mapa}"}
     ))
 
@@ -305,6 +366,33 @@ with aba_correlacoes:
     else:
         st.warning("É necessário ter pelo menos dois indicadores no tempo selecionado para calcular correlações.")
 
+    # ==========================================
+    # NOVA TABELA: SOCIOECONÔMICA
+    # ==========================================
+    st.markdown("---")
+    st.markdown("#### 📉 Acessibilidade vs Vulnerabilidade Social")
+    st.caption("Correlação entre a oferta de oportunidades de transporte e os indicadores sociais. Espera-se, por exemplo, que o aumento do acesso tenha forte relação com Renda e baixa correlação com Desocupação.")
+
+    # Verifica se as colunas socioeconômicas existem no nosso DataFrame
+    cols_socio = [c for c in ['IPM', 'Rnd_p_capi', 'Tx_desocup'] if c in gdf.columns]
+    
+    if len(cols_socio) > 0 and len(colunas_matriz) > 0:
+        # Calcula correlação de Spearman cruzando as de transporte com as sociais
+        df_matriz_socio = gdf[colunas_matriz + cols_socio].corr(method='spearman')
+        
+        # Filtra para mostrar apenas Transporte nas Linhas e Social nas Colunas
+        df_matriz_socio = df_matriz_socio.loc[colunas_matriz, cols_socio]
+        
+        # Renomeia para ficar executivo
+        nomes_limpos_acc = {col: formatar_indicador(col) for col in colunas_matriz}
+        nomes_limpos_socio = {col: formatar_indicador(col) for col in cols_socio}
+        df_matriz_socio = df_matriz_socio.rename(index=nomes_limpos_acc, columns=nomes_limpos_socio)
+        
+        matriz_socio_estilizada = df_matriz_socio.style.background_gradient(cmap='RdBu', vmin=-1, vmax=1).format("{:.2f}")
+        st.dataframe(matriz_socio_estilizada, use_container_width=True)
+    else:
+        st.info("Arquivo de territórios (dados sociais) não encontrado. A matriz ficará invisível até o banco de dados ser conectado.")
+
 # ==========================================
 # LÓGICA DO CHAT (FUNÇÃO FRAGMENTADA)
 # ==========================================
@@ -330,7 +418,7 @@ def renderizar_chat():
             # 1. RADAR INTELIGENTE
             modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             
-            # 2. ESCOLHA AUTOMÁTICA: Foco total nas versões "Lite" (feitas para alto volume e baixo consumo)
+            # 2. ESCOLHA AUTOMÁTICA
             modelo_escolhido = "gemini-2.5-flash-lite" 
             preferencias = [
                 'models/gemini-2.5-flash-lite', 
@@ -354,7 +442,6 @@ def renderizar_chat():
             ]
             
             # 3. TRUQUE DE ARQUITETURA: Memória Curta
-            # Pega apenas as últimas 4 mensagens do histórico (evita estourar o limite de tokens do Google)
             historico_recente = st.session_state.mensagens[-5:-1] if len(st.session_state.mensagens) > 4 else st.session_state.mensagens[:-1]
             
             for msg in historico_recente: 
