@@ -341,7 +341,9 @@ with aba_stats:
 with aba_correlacoes:
     # --- TABELA 1: ACESSIBILIDADE VS ACESSIBILIDADE ---
     st.markdown("### 🔗 Matriz: Acessibilidade vs Acessibilidade")
-    st.caption("Mede como a infraestrutura atende a diferentes serviços simultaneamente. **Tons de Azul (+)** indicam que áreas com bom acesso a um serviço (ex: Empregos) também possuem excelente acesso a outros (ex: Hospitais).")
+    st.caption("Mede a força e a direção da relação entre os indicadores. Valores próximos a *1* (Azul) indicam forte correlação positiva.")
+
+).")
     
     tempo_selecionado = st.radio(
         "Focar a análise em um tempo de deslocamento específico:",
@@ -372,7 +374,7 @@ with aba_correlacoes:
     # ==========================================
     st.markdown("---")
     st.markdown("#### 📉 Matriz: Acessibilidade vs Vulnerabilidade Social")
-    st.caption("Revela a desigualdade territorial. **Tons de Vermelho (-)** provam matematicamente que a falta de infraestrutura afeta os mais vulneráveis: quanto menor o acesso ao transporte, maior a concentração de Pobreza e Desemprego.")
+    st.caption("**Tons de Vermelho (-)** apresentam a falta de infraestrutura")
 
     # Verifica se as colunas socioeconômicas existem no nosso DataFrame
     cols_socio = [c for c in ['IPM', 'Rnd_p_capi', 'Tx_desocup'] if c in gdf.columns]
