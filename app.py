@@ -431,7 +431,7 @@ with aba_correlacoes:
                     )
                     
                     # ---> ADICIONE ESTA LINHA PARA REDUZIR O TAMANHO DOS CÍRCULOS <---
-                    fig_disp.update_traces(marker_size=3, selector=dict(mode='markers'))
+                    fig_disp.update_traces(marker_size=2, selector=dict(mode='markers'))
                     
                     # Linha de tendência na exata mesma cor
                     try:
