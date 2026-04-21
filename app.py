@@ -393,7 +393,7 @@ with aba_correlacoes:
         st.dataframe(matriz_socio_estilizada, use_container_width=True)
         
 # ==========================================
-        # GRÁFICOS DE DISPERSÃO (SIMPLES E DINÂMICO)
+        # GRÁFICOS DE DISPERSÃO (SÓLIDO E MINIMALISTA)
         # ==========================================
         st.markdown("---")
         st.markdown(f"#### 📍 Visão de Dispersão: **{formatar_indicador(indicador)}** vs Dados Sociais")
@@ -401,15 +401,14 @@ with aba_correlacoes:
         
         cols_graficos = st.columns(len(cols_socio))
         
-        # Lógica de Inversão de Tema: Detecta se o Streamlit está no modo dark
+        # Lógica de Inversão de Tema
         try:
             tema_escuro = st.get_option("theme.base") == "dark"
         except:
             tema_escuro = False
 
-        # Define Preto Fosco (Tema Claro) ou Branco Fosco (Tema Escuro)
-        cor_ponto = "rgba(255, 255, 255, 0.5)" if tema_escuro else "rgba(0, 0, 0, 0.5)"
-        cor_linha = "white" if tema_escuro else "black"
+        # Define cores 100% sólidas (sem fosco/transparência)
+        cor_solida = "white" if tema_escuro else "black"
         
         for i, var_socio in enumerate(cols_socio):
             with cols_graficos[i]:
@@ -420,17 +419,21 @@ with aba_correlacoes:
                     if len(df_plot) > 3000:
                         df_plot = df_plot.sample(3000, random_state=42)
                     
-                    # Gráfico com círculos foscos dinâmicos
+                    # Gráfico com círculos SÓLIDOS e CHAPADOS
                     fig_disp = px.scatter(
                         df_plot,
                         x=indicador,
                         y=var_socio,
-                        color_discrete_sequence=[cor_ponto],
+                        opacity=1.0,
+                        color_discrete_sequence=[cor_solida],
                         labels={indicador: "Oportunidades", var_socio: formatar_indicador(var_socio)},
                         title=f"{formatar_indicador(var_socio)}"
                     )
                     
-                    # Linha de tendência dinâmica
+                    # ---> ADICIONE ESTA LINHA PARA REDUZIR O TAMANHO DOS CÍRCULOS <---
+                    fig_disp.update_traces(marker_size=3, selector=dict(mode='markers'))
+                    
+                    # Linha de tendência na exata mesma cor
                     try:
                         z = np.polyfit(df_plot[indicador], df_plot[var_socio], 1)
                         p = np.poly1d(z)
@@ -440,13 +443,12 @@ with aba_correlacoes:
                             y=p(df_plot[indicador]), 
                             mode='lines', 
                             name='Tendência', 
-                            line=dict(color=cor_linha, width=3),
+                            line=dict(color=cor_solida, width=3),
                             showlegend=False
                         )
                     except:
                         pass
                     
-                    # Sem template engessado: Fundo fica transparente e adapta ao Streamlit
                     fig_disp.update_layout(margin=dict(l=10, r=10, t=40, b=10), height=300)
                     
                     st.plotly_chart(fig_disp, use_container_width=True, theme="streamlit")
