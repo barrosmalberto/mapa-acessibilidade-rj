@@ -238,7 +238,7 @@ with aba_mapa:
     centro_lat = gdf.geometry.centroid.y.mean()
     centro_lon = gdf.geometry.centroid.x.mean()
     
-    view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=90)
+    view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=0)
 
     st.pydeck_chart(pdk.Deck(
         map_style="dark", 
