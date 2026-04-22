@@ -367,7 +367,7 @@ with aba_correlacoes:
         # GRÁFICOS DE DISPERSÃO (COM P-VALOR LIMPO)
         # ==========================================
         st.markdown("---")
-        st.markdown(f"#### 📍 Visão de Dispersão: **{formatar_indicador(indicador)}** X Dados Sociais")
+        st.markdown(f"####Visão de Dispersão: **{formatar_indicador(indicador)}** X Dados Sociais")
         st.caption("Cada ponto é uma área do mapa. A linha mostra a tendência. Foram removidas áreas com zero acessos.")
         
         cols_graficos = st.columns(len(cols_socio))
