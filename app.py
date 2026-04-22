@@ -364,7 +364,7 @@ with aba_correlacoes:
         st.dataframe(matriz_socio_estilizada, use_container_width=True)
         
         # ==========================================
-        # GRÁFICOS DE DISPERSÃO (COM P-VALOR NO TÍTULO)
+        # GRÁFICOS DE DISPERSÃO (COM P-VALOR LIMPO)
         # ==========================================
         st.markdown("---")
         st.markdown(f"#### 📍 Visão de Dispersão: **{formatar_indicador(indicador)}** X Dados Sociais")
@@ -385,17 +385,12 @@ with aba_correlacoes:
                 df_plot = df_plot[(df_plot[indicador] > 0) & (df_plot[var_socio] > 0)]
                 
                 if len(df_plot) > 1: 
-                    # --- NOVO: Lógica do P-valor e Indicador ---
+                    # Calcula o Spearman apenas para extrair o P-valor
                     corr, pval = stats.spearmanr(df_plot[indicador], df_plot[var_socio])
                     p_text = "< 0.001" if pval < 0.001 else f"{pval:.4f}"
                     
-                    if pval <= 0.05:
-                        ind_corr = ""
-                    else:
-                        ind_corr = ""
-                        
-                    subtitulo_stats = f"{ind_corr} | Spearman: {corr:.2f} | P-valor: {p_text}"
-                    titulo_grafico = f"{formatar_indicador(var_socio)}<br><sup>{subtitulo_stats}</sup>"
+                    # Cria o título com estilo minimalista contendo APENAS o P-valor
+                    titulo_grafico = f"{formatar_indicador(var_socio)}<br><span style='font-size:12px; font-weight:normal;'>P-valor: {p_text}</span>"
                     
                     if len(df_plot) > 3000:
                         df_plot = df_plot.sample(3000, random_state=42)
@@ -406,8 +401,8 @@ with aba_correlacoes:
                         y=var_socio,
                         opacity=1.0,
                         color_discrete_sequence=[cor_solida],
-                        labels={indicador: "Oportunidades", var_socio: formatar_indicador(var_socio)},
-                        title=titulo_grafico
+                        labels={indicador: "Oportunidades", var_socio: formatar_indicador(var_socio)}
+                        # O título foi removido daqui para ser passado no update_layout e evitar sobreposições
                     )
                     
                     fig_disp.update_traces(marker_size=2, selector=dict(mode='markers'))
@@ -427,8 +422,12 @@ with aba_correlacoes:
                     except:
                         pass
                     
-                    # Aumentei levemente a margem do topo (t=60) para acomodar o subtítulo em HTML
-                    fig_disp.update_layout(margin=dict(l=10, r=10, t=60, b=10), height=300)
+                    # Margem superior (t=85) aumentada consideravelmente para não esmagar os números do eixo Y
+                    fig_disp.update_layout(
+                        title=dict(text=titulo_grafico, font=dict(size=14)),
+                        margin=dict(l=10, r=10, t=85, b=10), 
+                        height=300
+                    )
                     
                     st.plotly_chart(fig_disp, use_container_width=True, theme="streamlit")
                 else:
