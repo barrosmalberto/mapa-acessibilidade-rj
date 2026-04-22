@@ -108,7 +108,7 @@ def formatar_indicador(nome_tecnico):
     nome = nome.replace('_p95', ' (Pessimista)')
     
     # Formatação das variáveis socioeconômicas
-    nome = nome.replace('IPM', 'Índ. Pobreza Multidimensional (IPM)')
+    nome = nome.replace('IPM', 'Índ. Pobr. Multidim. (IPM)')
     nome = nome.replace('Rnd_p_capi', 'Renda per capita')
     nome = nome.replace('Tx_desocup', 'Taxa de Desocupação')
     
