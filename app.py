@@ -347,7 +347,7 @@ with aba_correlacoes:
     # ==========================================
     st.markdown("---")
     st.markdown("#### 📉 Matriz: Acessibilidade X Vulnerabilidade Social")
-    st.caption("**Tons de Vermelho (-)** apresentam a falta de infraestrutura")
+    st.caption("")
 
     cols_socio = [c for c in ['IPM', 'Rnd_p_capi', 'Tx_desocup'] if c in gdf.columns]
     
