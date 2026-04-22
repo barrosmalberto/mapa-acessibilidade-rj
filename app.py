@@ -6,10 +6,18 @@ import os
 import json
 import numpy as np
 import pandas as pd
-import scipy.stats as stats  # <-- IMPORT ATUALIZADO
+import scipy.stats as stats  
 import matplotlib
 import plotly.express as px
 import plotly.graph_objects as go
+
+# --- NOVO: IMPORTS GEOESTATÍSTICOS BLINDADOS ---
+try:
+    import libpysal
+    from esda.moran import Moran
+    HAS_PY_SAL = True
+except ImportError:
+    HAS_PY_SAL = False
 
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA
@@ -64,7 +72,6 @@ def load_data():
             if socio_gdf.crs != "EPSG:4326":
                 socio_gdf = socio_gdf.to_crs(epsg=4326)
             
-            # Garante que criamos o centroide apenas se não existir
             if 'gdf_centroides' not in locals():
                 gdf_centroides = gdf.copy()
                 gdf_centroides['geometry'] = gdf_centroides.geometry.centroid
@@ -74,7 +81,6 @@ def load_data():
             
             cruzamento_socio = gpd.sjoin(gdf_centroides, socio_gdf[cols_to_keep], how='left', predicate='within')
             
-            # Removemos duplicações caso haja sobreposição minúscula de polígonos
             cruzamento_socio = cruzamento_socio[~cruzamento_socio.index.duplicated(keep='first')]
             
             for var in vars_socio:
@@ -107,7 +113,6 @@ def formatar_indicador(nome_tecnico):
     nome = nome.replace('_p5', ' (Otimista)')
     nome = nome.replace('_p95', ' (Pessimista)')
     
-    # Formatação das variáveis socioeconômicas
     nome = nome.replace('IPM', 'Índ. Pobr. Multidim. (IPM)')
     nome = nome.replace('Rnd_p_capi', 'Renda per capita')
     nome = nome.replace('Tx_desocup', 'Taxa de Desocupação')
@@ -127,7 +132,6 @@ indicador = st.sidebar.selectbox(
     format_func=formatar_indicador
 )
 
-# --- FILTRO DE ÁREA PROGRAMÁTICA ---
 ap_selecionada = "Rio de Janeiro (Cidade Toda)" 
 
 if 'Area_Programatica' in gdf.columns and gdf['Area_Programatica'].nunique() > 1:
@@ -156,6 +160,25 @@ def calcular_gini(valores):
     index = np.arange(1, n + 1)
     gini = (np.sum((2 * index - n  - 1) * valores)) / (n * np.sum(valores))
     return gini
+
+# --- NOVO: FUNÇÃO DE CÁLCULO DO MORAN ---
+@st.cache_data(show_spinner=False)
+def calcular_moran_global(gdf_json, coluna_alvo):
+    # Recebemos JSON e recriamos o GDF temporariamente para evitar problemas de hash no st.cache_data
+    if not HAS_PY_SAL:
+        return None
+    try:
+        temp_gdf = gpd.GeoDataFrame.from_features(json.loads(gdf_json))
+        y = temp_gdf[coluna_alvo].fillna(0).values
+        if np.var(y) == 0:
+            return 0.0
+        # K=6 é ideal para hexágonos (6 vizinhos)
+        w = libpysal.weights.KNN.from_dataframe(temp_gdf, k=6)
+        w.transform = 'r'
+        mi = Moran(y, w)
+        return mi.I
+    except Exception as e:
+        return None
 
 def get_color_sunset(val):
     if max_val <= 0: return [40, 40, 40, 50]
@@ -207,12 +230,10 @@ aba_mapa, aba_stats, aba_correlacoes, aba_chat = st.tabs([
 ])
 
 with aba_mapa:
-    # --- CAMADA 1: HEXÁGONOS 3D (As "Torres") ---
-    # Camada de Calor (Heatmap) foi removida a pedido para um visual mais limpo
     layer_hex = pdk.Layer(
         "GeoJsonLayer",
         data=dados_json,
-        opacity=0.8, # Opacidade aumentada já que não há calor embaixo
+        opacity=0.8, 
         stroked=True,
         get_line_color=[77, 77, 77, 100], 
         line_width_min_pixels=0.5,
@@ -224,7 +245,6 @@ with aba_mapa:
         auto_highlight=True
     )
 
-    # --- CAMADA 2: FRONTEIRAS (A "Cerca" Branca) ---
     layer_limites = pdk.Layer(
         "GeoJsonLayer",
         data=dados_limite,
@@ -243,33 +263,67 @@ with aba_mapa:
     st.pydeck_chart(pdk.Deck(
         map_style="dark", 
         initial_view_state=view,
-        layers=[layer_hex, layer_limites], # Apenas Hexágonos e Limites
+        layers=[layer_hex, layer_limites],
         tooltip={"text": "Oportunidades: {valor_mapa}"}
     ))
 
 with aba_stats:
     st.markdown("### 📊 Decomposição e Desigualdade dos Dados")
     
+    # --- NOVO: RENDERIZAÇÃO LADO A LADO DO GINI E MORAN ---
     gini_val = calcular_gini(gdf['valor_mapa'])
     
-    fig_gini = go.Figure(go.Indicator(
-        mode = "gauge+number",
-        value = gini_val,
-        title = {'text': "Índice de Gini", 'font': {'size': 18}},
-        gauge = {
-            'axis': {'range': [0, 1]},
-            'bar': {'color': "white"},
-            'steps': [
-                {'range': [0.0, 0.3], 'color': "#2ca02c"},
-                {'range': [0.3, 0.5], 'color': "#f5b111"},
-                {'range': [0.5, 0.7], 'color': "#ff7f0e"},
-                {'range': [0.7, 1.0], 'color': "#d62728"} 
-            ],
-        }
-    ))
-    fig_gini.update_layout(height=280, margin=dict(l=10, r=10, t=40, b=10), template="plotly_dark")
+    if HAS_PY_SAL:
+        moran_val = calcular_moran_global(gdf[['geometry', 'valor_mapa']].to_json(), 'valor_mapa')
+        col_gini, col_moran = st.columns(2)
+    else:
+        moran_val = None
+        col_gini = st.container()
+        st.warning("💡 **Dica Técnica:** O Índice de Segregação (Moran) está inativo. No seu terminal, execute `pip install libpysal esda` e reinicie a aplicação para ativar a inteligência territorial avançada.")
     
-    st.plotly_chart(fig_gini, use_container_width=True)
+    with col_gini:
+        fig_gini = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = gini_val,
+            title = {'text': "Índice de Gini", 'font': {'size': 18}},
+            gauge = {
+                'axis': {'range': [0, 1]},
+                'bar': {'color': "white"},
+                'steps': [
+                    {'range': [0.0, 0.3], 'color': "#2ca02c"},
+                    {'range': [0.3, 0.5], 'color': "#f5b111"},
+                    {'range': [0.5, 0.7], 'color': "#ff7f0e"},
+                    {'range': [0.7, 1.0], 'color': "#d62728"} 
+                ],
+            }
+        ))
+        fig_gini.update_layout(height=280, margin=dict(l=10, r=10, t=40, b=10), template="plotly_dark")
+        st.plotly_chart(fig_gini, use_container_width=True)
+
+    if moran_val is not None:
+        with col_moran:
+            fig_moran = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = moran_val,
+                title = {'text': "Índice de Moran (Segregação)", 'font': {'size': 18}},
+                gauge = {
+                    'axis': {'range': [-1, 1]},
+                    'bar': {'color': "white"},
+                    'steps': [
+                        {'range': [-1.0, 0.0], 'color': "#2ca02c"}, # Aleatório / Disperso
+                        {'range': [0.0, 0.3], 'color': "#f5b111"},  # Clusters Leves
+                        {'range': [0.3, 0.6], 'color': "#ff7f0e"},  # Segregação Moderada
+                        {'range': [0.6, 1.0], 'color': "#d62728"}   # Extrema Segregação
+                    ],
+                }
+            ))
+            fig_moran.update_layout(height=280, margin=dict(l=10, r=10, t=40, b=10), template="plotly_dark")
+            st.plotly_chart(fig_moran, use_container_width=True)
+
+    # Legenda inteligente conjunta
+    if moran_val is not None:
+        st.caption("🧭 **Como ler as métricas:** O **Gini** mede a *concentração* (perto de 1 significa alta desigualdade na oferta). O **Moran** mede a *segregação* (tons laranja/vermelho provam que as áreas com alta oportunidade formam 'panelinhas' ou clusters no mapa, isolando as periferias).")
+    
     st.markdown("---")
 
     col_graf, col_tab = st.columns([2, 1])
@@ -385,11 +439,9 @@ with aba_correlacoes:
                 df_plot = df_plot[(df_plot[indicador] > 0) & (df_plot[var_socio] > 0)]
                 
                 if len(df_plot) > 1: 
-                    # Calcula o Spearman apenas para extrair o P-valor
                     corr, pval = stats.spearmanr(df_plot[indicador], df_plot[var_socio])
                     p_text = "< 0.001" if pval < 0.001 else f"{pval:.4f}"
                     
-                    # Cria o título com estilo minimalista contendo APENAS o P-valor
                     titulo_grafico = f"{formatar_indicador(var_socio)}<br><span style='font-size:12px; font-weight:normal;'>P-valor: {p_text}</span>"
                     
                     if len(df_plot) > 3000:
@@ -402,7 +454,6 @@ with aba_correlacoes:
                         opacity=1.0,
                         color_discrete_sequence=[cor_solida],
                         labels={indicador: "Oportunidades", var_socio: formatar_indicador(var_socio)}
-                        # O título foi removido daqui para ser passado no update_layout e evitar sobreposições
                     )
                     
                     fig_disp.update_traces(marker_size=2, selector=dict(mode='markers'))
@@ -422,7 +473,6 @@ with aba_correlacoes:
                     except:
                         pass
                     
-                    # Margem superior (t=85) aumentada consideravelmente para não esmagar os números do eixo Y
                     fig_disp.update_layout(
                         title=dict(text=titulo_grafico, font=dict(size=14)),
                         margin=dict(l=10, r=10, t=85, b=10), 
