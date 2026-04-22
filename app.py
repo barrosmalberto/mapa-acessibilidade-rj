@@ -390,9 +390,9 @@ with aba_correlacoes:
                     p_text = "< 0.001" if pval < 0.001 else f"{pval:.4f}"
                     
                     if pval <= 0.05:
-                        #ind_corr = "✅ Significativo"
+                        #ind_corr = ""
                     else:
-                        #ind_corr = "❌ Sem Correlação Real (Acaso)"
+                        #ind_corr = " "
                         
                     subtitulo_stats = f"{ind_corr} | Spearman: {corr:.2f} | P-valor: {p_text}"
                     titulo_grafico = f"{formatar_indicador(var_socio)}<br><sup>{subtitulo_stats}</sup>"
