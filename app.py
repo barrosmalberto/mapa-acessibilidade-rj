@@ -6,7 +6,7 @@ import os
 import json
 import numpy as np
 import pandas as pd
-import scipy
+import scipy.stats as stats  # <-- IMPORT ATUALIZADO
 import matplotlib
 import plotly.express as px
 import plotly.graph_objects as go
@@ -207,34 +207,12 @@ aba_mapa, aba_stats, aba_correlacoes, aba_chat = st.tabs([
 ])
 
 with aba_mapa:
-    # --- NOVO: PREPARAÇÃO DOS DADOS PARA O MAPA DE CALOR ---
-    # Extraímos as coordenadas centrais de cada hexágono para gerar o calor
-    df_calor = pd.DataFrame({
-        'lon': gdf.geometry.centroid.x,
-        'lat': gdf.geometry.centroid.y,
-        'peso': gdf['valor_mapa']
-    })
-    
-    # Removemos os zeros para não poluir as áreas vazias
-    df_calor = df_calor[df_calor['peso'] > 0]
-
-    # --- CAMADA 1: MAPA DE CALOR (O "Chão" Térmico) ---
-    layer_calor = pdk.Layer(
-        "HeatmapLayer",
-        data=df_calor,
-        opacity=0.7,
-        get_position='[lon, lat]',
-        get_weight='peso',
-        radius_pixels=60,  # Define o quão "espalhado" é o calor
-        intensity=1,
-        threshold=0.05
-    )
-
-    # --- CAMADA 2: HEXÁGONOS 3D (As "Torres") ---
+    # --- CAMADA 1: HEXÁGONOS 3D (As "Torres") ---
+    # Camada de Calor (Heatmap) foi removida a pedido para um visual mais limpo
     layer_hex = pdk.Layer(
         "GeoJsonLayer",
         data=dados_json,
-        opacity=0.6, # Ligeiramente transparente para deixar o calor brilhar por baixo
+        opacity=0.8, # Opacidade aumentada já que não há calor embaixo
         stroked=True,
         get_line_color=[77, 77, 77, 100], 
         line_width_min_pixels=0.5,
@@ -246,7 +224,7 @@ with aba_mapa:
         auto_highlight=True
     )
 
-    # --- CAMADA 3: FRONTEIRAS (A "Cerca" Branca) ---
+    # --- CAMADA 2: FRONTEIRAS (A "Cerca" Branca) ---
     layer_limites = pdk.Layer(
         "GeoJsonLayer",
         data=dados_limite,
@@ -262,11 +240,10 @@ with aba_mapa:
     
     view = pdk.ViewState(latitude=centro_lat, longitude=centro_lon, zoom=10, pitch=45)
 
-    # Renderizamos as 3 camadas em formato "Sanduíche" (Calor no fundo, Hexágonos no meio, Fronteira no topo)
     st.pydeck_chart(pdk.Deck(
         map_style="dark", 
         initial_view_state=view,
-        layers=[layer_calor, layer_hex, layer_limites], 
+        layers=[layer_hex, layer_limites], # Apenas Hexágonos e Limites
         tooltip={"text": "Oportunidades: {valor_mapa}"}
     ))
 
@@ -293,7 +270,6 @@ with aba_stats:
     fig_gini.update_layout(height=280, margin=dict(l=10, r=10, t=40, b=10), template="plotly_dark")
     
     st.plotly_chart(fig_gini, use_container_width=True)
-   # st.caption("O Índice de Gini mede a concentração de oportunidades em um único hexágono. Quanto mais próximo a **0**, maior a distribuição de oportunidades. Já o indicador **1** representa a concentração de oportunidades em um único hexágono.")
     st.markdown("---")
 
     col_graf, col_tab = st.columns([2, 1])
@@ -341,7 +317,6 @@ with aba_stats:
 with aba_correlacoes:
     # --- TABELA 1: ACESSIBILIDADE X ACESSIBILIDADE ---
     st.markdown("### 🔗 Matriz: Acessibilidade X Acessibilidade")
-    # st.caption("Mede a força e a direção da relação entre os indicadores. Valores próximos a *1* (Azul) indicam forte correlação positiva.")
     
     tempo_selecionado = st.radio(
         "Focar a análise em um tempo de deslocamento específico:",
@@ -374,17 +349,13 @@ with aba_correlacoes:
     st.markdown("#### 📉 Matriz: Acessibilidade X Vulnerabilidade Social")
     st.caption("**Tons de Vermelho (-)** apresentam a falta de infraestrutura")
 
-    # Verifica se as colunas socioeconômicas existem no nosso DataFrame
     cols_socio = [c for c in ['IPM', 'Rnd_p_capi', 'Tx_desocup'] if c in gdf.columns]
     
     if len(cols_socio) > 0 and len(colunas_matriz) > 0:
-        # Calcula correlação de Spearman cruzando as de transporte com as sociais
         df_matriz_socio = gdf[colunas_matriz + cols_socio].corr(method='spearman')
         
-        # Filtra para mostrar apenas Transporte nas Linhas e Social nas Colunas
         df_matriz_socio = df_matriz_socio.loc[colunas_matriz, cols_socio]
         
-        # Renomeia para ficar executivo
         nomes_limpos_acc = {col: formatar_indicador(col) for col in colunas_matriz}
         nomes_limpos_socio = {col: formatar_indicador(col) for col in cols_socio}
         df_matriz_socio = df_matriz_socio.rename(index=nomes_limpos_acc, columns=nomes_limpos_socio)
@@ -392,8 +363,8 @@ with aba_correlacoes:
         matriz_socio_estilizada = df_matriz_socio.style.background_gradient(cmap='RdBu', vmin=-1, vmax=1).format("{:.2f}")
         st.dataframe(matriz_socio_estilizada, use_container_width=True)
         
-# ==========================================
-        # GRÁFICOS DE DISPERSÃO (SÓLIDO E MINIMALISTA)
+        # ==========================================
+        # GRÁFICOS DE DISPERSÃO (COM P-VALOR NO TÍTULO)
         # ==========================================
         st.markdown("---")
         st.markdown(f"#### 📍 Visão de Dispersão: **{formatar_indicador(indicador)}** X Dados Sociais")
@@ -401,13 +372,11 @@ with aba_correlacoes:
         
         cols_graficos = st.columns(len(cols_socio))
         
-        # Lógica de Inversão de Tema
         try:
             tema_escuro = st.get_option("theme.base") == "dark"
         except:
             tema_escuro = False
 
-        # Define cores 100% sólidas (sem fosco/transparência)
         cor_solida = "white" if tema_escuro else "black"
         
         for i, var_socio in enumerate(cols_socio):
@@ -416,10 +385,21 @@ with aba_correlacoes:
                 df_plot = df_plot[(df_plot[indicador] > 0) & (df_plot[var_socio] > 0)]
                 
                 if len(df_plot) > 1: 
+                    # --- NOVO: Lógica do P-valor e Indicador ---
+                    corr, pval = stats.spearmanr(df_plot[indicador], df_plot[var_socio])
+                    p_text = "< 0.001" if pval < 0.001 else f"{pval:.4f}"
+                    
+                    if pval <= 0.05:
+                        ind_corr = "✅ Significativo"
+                    else:
+                        ind_corr = "❌ Sem Correlação Real (Acaso)"
+                        
+                    subtitulo_stats = f"{ind_corr} | Spearman: {corr:.2f} | P-valor: {p_text}"
+                    titulo_grafico = f"{formatar_indicador(var_socio)}<br><sup>{subtitulo_stats}</sup>"
+                    
                     if len(df_plot) > 3000:
                         df_plot = df_plot.sample(3000, random_state=42)
                     
-                    # Gráfico com círculos SÓLIDOS e CHAPADOS
                     fig_disp = px.scatter(
                         df_plot,
                         x=indicador,
@@ -427,13 +407,11 @@ with aba_correlacoes:
                         opacity=1.0,
                         color_discrete_sequence=[cor_solida],
                         labels={indicador: "Oportunidades", var_socio: formatar_indicador(var_socio)},
-                        title=f"{formatar_indicador(var_socio)}"
+                        title=titulo_grafico
                     )
                     
-                    # ---> ADICIONE ESTA LINHA PARA REDUZIR O TAMANHO DOS CÍRCULOS <---
                     fig_disp.update_traces(marker_size=2, selector=dict(mode='markers'))
                     
-                    # Linha de tendência na exata mesma cor
                     try:
                         z = np.polyfit(df_plot[indicador], df_plot[var_socio], 1)
                         p = np.poly1d(z)
@@ -449,7 +427,8 @@ with aba_correlacoes:
                     except:
                         pass
                     
-                    fig_disp.update_layout(margin=dict(l=10, r=10, t=40, b=10), height=300)
+                    # Aumentei levemente a margem do topo (t=60) para acomodar o subtítulo em HTML
+                    fig_disp.update_layout(margin=dict(l=10, r=10, t=60, b=10), height=300)
                     
                     st.plotly_chart(fig_disp, use_container_width=True, theme="streamlit")
                 else:
@@ -477,10 +456,8 @@ def renderizar_chat():
             import google.generativeai as genai
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             
-            # 1. RADAR INTELIGENTE
             modelos_disponiveis = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
             
-            # 2. ESCOLHA AUTOMÁTICA
             modelo_escolhido = "gemini-2.5-flash-lite" 
             preferencias = [
                 'models/gemini-2.5-flash-lite', 
@@ -503,7 +480,6 @@ def renderizar_chat():
                 {"role": "model", "parts": ["Entendido! Estou pronto para analisar os dados urbanos do Rio de Janeiro."]}
             ]
             
-            # 3. TRUQUE DE ARQUITETURA: Memória Curta
             historico_recente = st.session_state.mensagens[-5:-1] if len(st.session_state.mensagens) > 4 else st.session_state.mensagens[:-1]
             
             for msg in historico_recente: 
@@ -523,7 +499,6 @@ def renderizar_chat():
             st.markdown(resposta)
         st.session_state.mensagens.append({"role": "assistant", "content": resposta})
 
-# Renderiza a aba isolada
 with aba_chat:
     st.markdown("### 💬 Assistente Virtual de Acessibilidade")
     st.caption("Tire suas dúvidas sobre os dados, o Índice de Gini ou peça ajuda para interpretar o mapa.")
