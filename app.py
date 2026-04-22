@@ -255,7 +255,7 @@ with aba_stats:
     fig_gini = go.Figure(go.Indicator(
         mode = "gauge+number",
         value = gini_val,
-        title = {'text': "Índice de Gini (Desigualdade Espacial)", 'font': {'size': 18}},
+        title = {'text': "Índice de Gini", 'font': {'size': 18}},
         gauge = {
             'axis': {'range': [0, 1]},
             'bar': {'color': "white"},
